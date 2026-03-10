@@ -363,8 +363,17 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
       get: {
         operationId: 'getNode',
         summary: 'Get Node | Ambil Node',
-        description:
-          '**[EN]** Retrieve a single asset node by its UUID, including its direct children.\n**[ID]** Mengambil satu node aset berdasarkan UUID-nya, termasuk anak langsungnya (direct children).',
+        description: `**[EN]** Retrieve a single asset node by its UUID, including its direct children.
+      You can use the \`?type=\` query parameter to filter the returned file arrays:
+      - \`?type=pdf\`: Removes images and videos arrays
+      - \`?type=image\`: Removes pdfs and videos arrays
+      - \`?type=video\`: Removes pdfs and images arrays
+
+      **[ID]** Mengambil satu node aset berdasarkan UUID-nya, termasuk anak langsungnya (direct children).
+      Anda dapat menggunakan query parameter \`?type=\` untuk menyaring array file yang dikembalikan:
+      - \`?type=pdf\`: Menghapus array images dan videos
+      - \`?type=image\`: Menghapus array pdfs dan videos
+      - \`?type=video\`: Menghapus array pdfs dan images`,
         tags: ['Nodes'],
         parameters: [
           {
@@ -373,6 +382,12 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
             required: true,
             description: 'UUID of the node',
             schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'type',
+            in: 'query',
+            description: 'Filter files by type (`pdf`, `image`, or `video`)',
+            schema: { type: 'string', enum: ['pdf', 'image', 'video'] },
           },
         ],
         responses: {

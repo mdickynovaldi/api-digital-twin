@@ -74,7 +74,22 @@ nodeRoutes.get('/', async (c) => {
 // ─── GET /nodes/:id — Get single node detail ───────────────────────
 nodeRoutes.get('/:id', async (c) => {
   const id = c.req.param('id');
+  const typeFilter = c.req.query('type'); // optional: 'pdf' | 'image' | 'video'
+  
   const result = await nodeService.getNode(id);
+  
+  // Conditionally strip out unrequested file types if typeFilter is used
+  if (typeFilter === 'pdf') {
+    result.images = [];
+    result.videos = [];
+  } else if (typeFilter === 'image') {
+    result.pdfs = [];
+    result.videos = [];
+  } else if (typeFilter === 'video') {
+    result.pdfs = [];
+    result.images = [];
+  }
+  
   return c.json(successResponse(result));
 });
 
