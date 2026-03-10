@@ -769,6 +769,180 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
         },
       },
     },
+
+    // ─── File Uploads ──────────────────────────────────────────────────
+    '/nodes/{id}/files': {
+      get: {
+        operationId: 'getNodeFiles',
+        summary: 'Get Node Files | Ambil File Node',
+        description: '**[EN]** Retrieve only the file URLs (pdfs, images, videos) attached to a node.\n**[ID]** Mengambil hanya URL file (PDF, gambar, video) yang terlampir pada node.',
+        tags: ['Nodes'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the node',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'File URLs retrieved successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        pdfs: { type: 'array', items: { type: 'string', format: 'uri' } },
+                        images: { type: 'array', items: { type: 'string', format: 'uri' } },
+                        videos: { type: 'array', items: { type: 'string', format: 'uri' } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '404': {
+            description: 'Node not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: 'uploadNodeFiles',
+        summary: 'Upload Node Files | Unggah File Node',
+        description: '**[EN]** Upload multiple files (pdfs, images, videos) and attach them to a node. Accepts `multipart/form-data`.\n**[ID]** Mengunggah beberapa file (PDF, gambar, video) dan melampirkannya ke node. Menerima `multipart/form-data`.',
+        tags: ['Nodes'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the node',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  'pdfs[]': {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'PDF documents (max 20MB each)',
+                  },
+                  'images[]': {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'Image files (JPEG/PNG/WebP/GIF, max 10MB each)',
+                  },
+                  'videos[]': {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'Video files (MP4/WebM/MOV, max 200MB each)',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Files uploaded successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/AssetNode' },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Validation error or invalid file type/size',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: 'deleteNodeFiles',
+        summary: 'Delete Node Files | Hapus File Node',
+        description: '**[EN]** Remove specific file URLs from a node and delete them from disk.\n**[ID]** Menghapus URL file tertentu dari node dan menghapusnya dari disk.',
+        tags: ['Nodes'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the node',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  pdfs: { type: 'array', items: { type: 'string', format: 'uri' } },
+                  images: { type: 'array', items: { type: 'string', format: 'uri' } },
+                  videos: { type: 'array', items: { type: 'string', format: 'uri' } },
+                },
+              },
+              example: {
+                pdfs: ['/uploads/pdfs/document.pdf'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Files deleted successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/AssetNode' },
+                  },
+                },
+              },
+            },
+          },
+          '404': {
+            description: 'Node not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 
   // ─── Components ───────────────────────────────────────────────────
@@ -826,6 +1000,21 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
             type: 'array',
             items: { type: 'string' },
             example: [],
+          },
+          pdfs: {
+            type: 'array',
+            items: { type: 'string', format: 'uri' },
+            example: ['/uploads/pdfs/xxx.pdf'],
+          },
+          images: {
+            type: 'array',
+            items: { type: 'string', format: 'uri' },
+            example: ['/uploads/images/xxx.jpg'],
+          },
+          videos: {
+            type: 'array',
+            items: { type: 'string', format: 'uri' },
+            example: ['/uploads/videos/xxx.mp4'],
           },
           created_at: {
             type: 'string',
@@ -948,6 +1137,9 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
           tags: { type: 'array', items: { type: 'string' } },
           categories: { type: 'array', items: { type: 'string' } },
           dependent_category: { type: 'array', items: { type: 'string' } },
+          pdfs: { type: 'array', items: { type: 'string', format: 'uri' } },
+          images: { type: 'array', items: { type: 'string', format: 'uri' } },
+          videos: { type: 'array', items: { type: 'string', format: 'uri' } },
         },
       },
 
