@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// AssetNode represents a machine or part in the digital twin tree.
+/// Uses adjacency list pattern for recursive self-relation.
+model AssetNode {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  status      String   @default("Machine")
+  company     String   @default("")
+  color       String   @default("#000000")
+  level       Int      @default(1)
+  isActive    Boolean  @default(true) @map("is_active")
+  icon        String   @default("tabler:settings")
+  description String   @default("")
+
+  // 3D Coordinates (stored as individual floats for query performance)
+  coordinateX     Float @default(0) @map("coordinate_x")
+  coordinateY     Float @default(0) @map("coordinate_y")
+  coordinateZ     Float @default(0) @map("coordinate_z")
+
+  lineCoordinateX Float @default(0) @map("line_coordinate_x")
+  lineCoordinateY Float @default(0) @map("line_coordinate_y")
+  lineCoordinateZ Float @default(0) @map("line_coordinate_z")
+
+  rotateX         Float @default(0) @map("rotate_x")
+  rotateY         Float @default(0) @map("rotate_y")
+  rotateZ         Float @default(0) @map("rotate_z")
+
+  size Float @default(1)
+
+  // Self-relation for recursive tree (adjacency list)
+  parentId String?     @map("parent_id") @db.Uuid
+  parent   AssetNode?  @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children AssetNode[] @relation("NodeTree")
+
+  // Array fields stored as PostgreSQL text arrays
+  tags              String[] @default([])
+  categories        String[] @default([])
+  dependentCategory String[] @default([]) @map("dependent_category")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([parentId])
+  @@index([level])
+  @@index([isActive])
+  @@index([status])
+  @@map("asset_nodes")
+}
