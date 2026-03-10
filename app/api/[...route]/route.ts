@@ -13,7 +13,7 @@ app.use('*', loggerMiddleware);
 app.use('*', errorHandler);
 
 // ─── Language Filter Helper ─────────────────────────────────────────
-function filterLanguage(obj: any, lang: 'en' | 'id'): any {
+function filterLanguage(obj: unknown, lang: 'en' | 'id'): unknown {
   if (typeof obj === 'string') {
     if (obj.includes('**[EN]**') && obj.includes('**[ID]**')) {
       const enMatch = obj.match(/\*\*\[EN\]\*\*\s*([\s\S]*?)(?=\*\*\[ID\]\*\*|$)/);
@@ -33,9 +33,9 @@ function filterLanguage(obj: any, lang: 'en' | 'id'): any {
     return obj.map((item) => filterLanguage(item, lang));
   }
   if (typeof obj === 'object' && obj !== null) {
-    const newObj: any = {};
+    const newObj: Record<string, unknown> = {};
     for (const key in obj) {
-      newObj[key] = filterLanguage(obj[key], lang);
+      newObj[key] = filterLanguage((obj as Record<string, unknown>)[key], lang);
     }
     return newObj;
   }
