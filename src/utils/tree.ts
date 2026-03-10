@@ -35,6 +35,9 @@ export function transformNodeToResponse(node: AssetNode & { children?: AssetNode
     tags: node.tags,
     categories: node.categories,
     dependent_category: node.dependentCategory,
+    pdfs: node.pdfs,
+    images: node.images,
+    videos: node.videos,
     created_at: node.createdAt.toISOString(),
     updated_at: node.updatedAt.toISOString(),
     children: (node.children || []).map((child: AssetNode & { children?: AssetNode[] }) =>

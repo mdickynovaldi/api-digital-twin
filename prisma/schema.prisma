@@ -48,6 +48,11 @@ model AssetNode {
   categories        String[] @default([])
   dependentCategory String[] @default([]) @map("dependent_category")
 
+  // File attachment URLs (optional, multiple per node)
+  pdfs   String[] @default([])
+  images String[] @default([])
+  videos String[] @default([])
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

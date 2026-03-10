@@ -15,11 +15,15 @@ import type {
   BulkUpsertTreeInput,
 } from '@/src/schemas/node.schema';
 import { successResponse, listResponse, errorResponse } from '@/src/utils/response';
+import uploadRoutes from '@/src/routes/upload.routes';
 
 /**
  * Node routes — all REST endpoints for AssetNode CRUD and tree operations.
  */
 const nodeRoutes = new Hono();
+
+// ─── File upload sub-routes (/nodes/:id/files) ──────────────────────
+nodeRoutes.route('/', uploadRoutes);
 
 // ─── POST /nodes — Create root node or node with nested children ────
 nodeRoutes.post('/', async (c) => {

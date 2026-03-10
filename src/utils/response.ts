@@ -17,10 +17,14 @@ export interface ApiResponse<T = unknown> {
   };
 }
 
-export function successResponse<T>(data: T): ApiResponse<T> {
+export function successResponse<T>(
+  data: T,
+  meta?: Record<string, unknown>
+): ApiResponse<T> & { meta?: Record<string, unknown> } {
   return {
     success: true,
     data,
+    ...(meta && { meta }),
   };
 }
 

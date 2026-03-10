@@ -63,6 +63,9 @@ export const nodeService = {
       tags: input.tags,
       categories: input.categories,
       dependentCategory: input.dependent_category,
+      pdfs: input.pdfs ?? [],
+      images: input.images ?? [],
+      videos: input.videos ?? [],
     });
 
     // Recursively create children
@@ -169,6 +172,9 @@ export const nodeService = {
     if (input.tags !== undefined) updateData.tags = input.tags;
     if (input.categories !== undefined) updateData.categories = input.categories;
     if (input.dependent_category !== undefined) updateData.dependentCategory = input.dependent_category;
+    if (input.pdfs !== undefined) updateData.pdfs = input.pdfs;
+    if (input.images !== undefined) updateData.images = input.images;
+    if (input.videos !== undefined) updateData.videos = input.videos;
 
     // Handle coordinate updates (partial merge)
     if (input.coordinate) {
@@ -370,6 +376,9 @@ export const nodeService = {
         tags: nodeInput.tags,
         categories: nodeInput.categories,
         dependentCategory: nodeInput.dependent_category,
+        pdfs: nodeInput.pdfs ?? [],
+        images: nodeInput.images ?? [],
+        videos: nodeInput.videos ?? [],
       };
 
       const upserted = await nodeRepository.upsert(
@@ -395,5 +404,53 @@ export const nodeService = {
     }
 
     return results;
+  },
+
+  /**
+   * Append file URLs to a node's pdfs/images/videos arrays.
+   * Existing URLs are preserved; only new ones are added.
+   */
+  async addFiles(
+    id: string,
+    files: { pdfs?: string[]; images?: string[]; videos?: string[] }
+  ): Promise<Record<string, unknown>> {
+    const existing = await nodeRepository.findById(id);
+    if (!existing) {
+      throw new AppError('Node not found', 404, 'NOT_FOUND');
+    }
+
+    const updated = await nodeRepository.update(id, {
+      pdfs: [...existing.pdfs, ...(files.pdfs ?? [])],
+      images: [...existing.images, ...(files.images ?? [])],
+      videos: [...existing.videos, ...(files.videos ?? [])],
+    });
+
+    return transformNodeFlat(updated);
+  },
+
+  /**
+   * Remove specific file URLs from a node's pdfs/images/videos arrays.
+   * Physical file deletion is handled by the route layer.
+   */
+  async removeFiles(
+    id: string,
+    files: { pdfs?: string[]; images?: string[]; videos?: string[] }
+  ): Promise<Record<string, unknown>> {
+    const existing = await nodeRepository.findById(id);
+    if (!existing) {
+      throw new AppError('Node not found', 404, 'NOT_FOUND');
+    }
+
+    const toRemovePdfs = new Set(files.pdfs ?? []);
+    const toRemoveImages = new Set(files.images ?? []);
+    const toRemoveVideos = new Set(files.videos ?? []);
+
+    const updated = await nodeRepository.update(id, {
+      pdfs: existing.pdfs.filter((u) => !toRemovePdfs.has(u)),
+      images: existing.images.filter((u) => !toRemoveImages.has(u)),
+      videos: existing.videos.filter((u) => !toRemoveVideos.has(u)),
+    });
+
+    return transformNodeFlat(updated);
   },
 };

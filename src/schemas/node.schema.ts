@@ -25,6 +25,10 @@ const nodeBaseFields = {
   tags: z.array(z.string()).default([]),
   categories: z.array(z.string()).default([]),
   dependent_category: z.array(z.string()).default([]),
+  // Optional file attachment URL arrays
+  pdfs: z.array(z.string().url()).default([]),
+  images: z.array(z.string().url()).default([]),
+  videos: z.array(z.string().url()).default([]),
 };
 
 // ─── Create Node Schema (with recursive children) ──────────────────
@@ -73,6 +77,10 @@ export const updateNodeSchema = z.object({
   tags: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(),
   dependent_category: z.array(z.string()).optional(),
+  // Optional file attachment URL arrays
+  pdfs: z.array(z.string().url()).optional(),
+  images: z.array(z.string().url()).optional(),
+  videos: z.array(z.string().url()).optional(),
 }).refine((data) => Object.keys(data).length > 0, {
   message: 'At least one field must be provided for update',
 });
