@@ -38,8 +38,7 @@ export interface UploadError {
  * Returns the public URL path.
  */
 export async function saveUploadedFile(
-  file: File,
-  fieldName: string
+  file: File
 ): Promise<UploadResult> {
   const mime = file.type;
   const config = ALLOWED_TYPES[mime];
@@ -107,7 +106,7 @@ export async function processFormFiles(formData: FormData): Promise<{
 
     for (const file of allFiles) {
       try {
-        const result = await saveUploadedFile(file, fieldName);
+        const result = await saveUploadedFile(file);
         if (result.folder === 'pdfs') pdfs.push(result.url);
         else if (result.folder === 'images') images.push(result.url);
         else if (result.folder === 'videos') videos.push(result.url);

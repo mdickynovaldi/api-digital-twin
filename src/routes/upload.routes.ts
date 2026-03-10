@@ -115,7 +115,7 @@ uploadRoutes.get('/:id/files', async (c) => {
   try {
     const node = await nodeService.getNode(id);
 
-    let result: Record<string, unknown> = { id: node.id };
+    const result: Record<string, unknown> = { id: node.id };
 
     if (typeFilter === 'pdf') {
       result.pdfs = node.pdfs;
