@@ -106,19 +106,31 @@ uploadRoutes.delete('/:id/files', async (c) => {
 // ─── GET /nodes/:id/files ─────────────────────────────────────────────
 // Convenience endpoint — returns only the file arrays for a node.
 // Useful for Unity to quickly fetch media URLs without full node data.
+// Accepts optional `type` query param (`pdf`, `image`, `video`) to filter results.
 //
 uploadRoutes.get('/:id/files', async (c) => {
   const id = c.req.param('id');
+  const typeFilter = c.req.query('type'); // 'pdf' | 'image' | 'video'
+
   try {
     const node = await nodeService.getNode(id);
-    return c.json(
-      successResponse({
-        id: node.id,
-        pdfs: node.pdfs,
-        images: node.images,
-        videos: node.videos,
-      } as Record<string, unknown>)
-    );
+
+    let result: Record<string, unknown> = { id: node.id };
+
+    if (typeFilter === 'pdf') {
+      result.pdfs = node.pdfs;
+    } else if (typeFilter === 'image') {
+      result.images = node.images;
+    } else if (typeFilter === 'video') {
+      result.videos = node.videos;
+    } else {
+      // Default: return all types
+      result.pdfs = node.pdfs;
+      result.images = node.images;
+      result.videos = node.videos;
+    }
+
+    return c.json(successResponse(result));
   } catch (err) {
     if (err instanceof AppError) {
       return c.json(errorResponse(err.message, err.code), err.statusCode as 404);

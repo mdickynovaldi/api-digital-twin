@@ -775,7 +775,19 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
       get: {
         operationId: 'getNodeFiles',
         summary: 'Get Node Files | Ambil File Node',
-        description: '**[EN]** Retrieve only the file URLs (pdfs, images, videos) attached to a node.\n**[ID]** Mengambil hanya URL file (PDF, gambar, video) yang terlampir pada node.',
+        description: `**[EN]** Retrieve only the file URLs attached to a node.
+      You can use the \`?type=\` query parameter to filter by file type:
+      - \`?type=pdf\`: Returns only PDF URLs
+      - \`?type=image\`: Returns only Image URLs
+      - \`?type=video\`: Returns only Video URLs
+      If \`type\` is omitted, it returns all file URLs (pdfs, images, videos).
+
+      **[ID]** Mengambil hanya URL file yang terlampir pada node.
+      Anda dapat menggunakan query parameter \`?type=\` untuk menyaring berdasarkan jenis file:
+      - \`?type=pdf\`: Hanya mengembalikan URL PDF
+      - \`?type=image\`: Hanya mengembalikan URL Gambar
+      - \`?type=video\`: Hanya mengembalikan URL Video
+      Jika \`type\` tidak disertakan, API akan mengembalikan semua URL file.`,
         tags: ['Nodes'],
         parameters: [
           {
@@ -784,6 +796,12 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
             required: true,
             description: 'UUID of the node',
             schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'type',
+            in: 'query',
+            description: 'Filter files by type (`pdf`, `image`, or `video`)',
+            schema: { type: 'string', enum: ['pdf', 'image', 'video'] },
           },
         ],
         responses: {
