@@ -11,24 +11,27 @@ export const openApiSpec = {
     title: 'Digital Twin API',
     version: '1.0.0',
     description: `
-## Overview
+## Overview | Gambaran Umum
 
-REST API for managing hierarchical machine/asset nodes in a Unity digital twin application.
+**[EN]** REST API for managing hierarchical machine/asset nodes in a Unity digital twin application.
 Supports full CRUD operations with recursive tree structures, nested children, subtree operations, and bulk upserts.
+**[ID]** REST API untuk mengelola node mesin/aset hierarkis dalam aplikasi digital twin Unity.
+Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nested children), operasi sub-pohon, dan upsert massal.
 
-## Features
+## Features | Fitur
 
-- 🌳 **Recursive Tree Structure** — Nodes can have unlimited nested children
-- 🔄 **Full CRUD** — Create, Read, Update, Delete operations for all nodes
-- 📦 **Bulk Operations** — Upsert entire tree structures in a single request
-- 🚚 **Move Nodes** — Reparent nodes within the tree
-- 🎯 **Filtering** — Query nodes by status, company, active state
-- 📄 **Pagination** — Built-in pagination for list endpoints
-- 🎮 **Unity Ready** — Designed for integration with Unity applications
+- 🌳 **Recursive Tree Structure | Struktur Pohon Rekursif** — Nodes can have unlimited nested children | Node dapat memiliki anak bersarang tak terbatas
+- 🔄 **Full CRUD | CRUD Penuh** — Create, Read, Update, Delete operations for all nodes | Operasi Buat, Baca, Perbarui, Hapus untuk semua node
+- 📦 **Bulk Operations | Operasi Massal** — Upsert entire tree structures in a single request | Upsert seluruh struktur pohon dalam satu permintaan
+- 🚚 **Move Nodes | Pindahkan Node** — Reparent nodes within the tree | Mengubah referensi induk (parent) node dalam pohon
+- 🎯 **Filtering | Penyaringan** — Query nodes by status, company, active state | Kueri pencarian node berdasarkan status, perusahaan, dan status aktif
+- 📄 **Pagination | Paginasi** — Built-in pagination for list endpoints | Paginasi bawaan untuk endpoint daftar
+- 🎮 **Unity Ready | Siap untuk Unity** — Designed for integration with Unity applications | Dirancang untuk integrasi dengan aplikasi Unity
 
-## Response Format
+## Response Format | Format Respons
 
-All endpoints return a consistent JSON format:
+**[EN]** All endpoints return a consistent JSON format:
+**[ID]** Semua endpoint mengembalikan format JSON yang konsisten:
 
 \`\`\`json
 {
@@ -38,13 +41,14 @@ All endpoints return a consistent JSON format:
 }
 \`\`\`
 
-Error responses follow the same structure:
+**[EN]** Error responses follow the same structure:
+**[ID]** Respons kesalahan (error) mengikuti struktur yang sama:
 
 \`\`\`json
 {
   "success": false,
   "error": {
-    "message": "Description of the error",
+    "message": "Description of the error | Deskripsi kesalahan",
     "code": "ERROR_CODE",
     "details": [...]
   }
@@ -61,29 +65,29 @@ Error responses follow the same structure:
   servers: [
     {
       url: '/api',
-      description: 'Current Server',
+      description: 'Current Server | Server Saat Ini',
     },
     {
       url: 'http://localhost:3000/api',
-      description: 'Local Development',
+      description: 'Local Development | Pengembangan Lokal',
     },
   ],
   tags: [
     {
       name: 'Health',
-      description: 'Service health check endpoints',
+      description: 'Service health check endpoints | Endpoint pemeriksaan status layanan',
     },
     {
       name: 'Nodes',
-      description: 'CRUD operations for AssetNode resources',
+      description: 'CRUD operations for AssetNode resources | Operasi CRUD untuk resource AssetNode',
     },
     {
       name: 'Tree Operations',
-      description: 'Recursive tree traversal and manipulation',
+      description: 'Recursive tree traversal and manipulation | Penelusuran dan manipulasi pohon rekursif',
     },
     {
       name: 'Bulk Operations',
-      description: 'Batch operations for tree structures',
+      description: 'Batch operations for tree structures | Operasi massal untuk struktur pohon',
     },
   ],
   paths: {
@@ -132,16 +136,16 @@ Error responses follow the same structure:
     '/nodes': {
       get: {
         operationId: 'listNodes',
-        summary: 'List Nodes',
+        summary: 'List Nodes | Daftar Node',
         description:
-          'Retrieve a paginated list of asset nodes with optional filtering by root status, status, company, and active state.',
+          '**[EN]** Retrieve a paginated list of asset nodes with optional filtering by root status, status, company, and active state.\n**[ID]** Mengambil daftar paginasi node aset dengan penyaringan (filter) opsional berdasarkan status root, status, perusahaan, dan keadaan aktif.',
         tags: ['Nodes'],
         parameters: [
           {
             name: 'rootOnly',
             in: 'query',
             description:
-              'If `true`, only return root nodes (nodes without a parent)',
+              '**[EN]** If `true`, only return root nodes (nodes without a parent). **[ID]** Jika `true`, hanya mengembalikan node root (node tanpa parent)',
             schema: { type: 'string', enum: ['true', 'false'] },
             example: 'true',
           },
@@ -200,9 +204,9 @@ Error responses follow the same structure:
       },
       post: {
         operationId: 'createNode',
-        summary: 'Create Node',
+        summary: 'Create Node | Buat Node',
         description:
-          'Create a new asset node. Supports creating nested children in a single request by providing the `children` array recursively.',
+          '**[EN]** Create a new asset node. Supports creating nested children in a single request by providing the `children` array recursively.\n**[ID]** Membuat node aset baru. Mendukung pembuatan anak bersarang (nested children) dalam satu permintaan dengan menyertakan array `children` secara rekursif.',
         tags: ['Nodes'],
         requestBody: {
           required: true,
@@ -273,9 +277,9 @@ Error responses follow the same structure:
     '/nodes/bulk-upsert-tree': {
       post: {
         operationId: 'bulkUpsertTree',
-        summary: 'Bulk Upsert Tree',
+        summary: 'Bulk Upsert Tree | Upsert Pohon Secara Massal',
         description:
-          'Upsert an entire tree structure in a single request. Nodes with an `id` will be updated, nodes without will be created. Children are processed recursively.',
+          '**[EN]** Upsert an entire tree structure in a single request. Nodes with an `id` will be updated, nodes without will be created. Children are processed recursively.\n**[ID]** Melakukan upsert (tambah/perbarui) seluruh struktur pohon dalam satu permintaan. Node dengan `id` akan diperbarui, node tanpa `id` akan dibuat baru. Anak (children) diproses secara rekursif.',
         tags: ['Bulk Operations'],
         requestBody: {
           required: true,
@@ -358,9 +362,9 @@ Error responses follow the same structure:
     '/nodes/{id}': {
       get: {
         operationId: 'getNode',
-        summary: 'Get Node',
+        summary: 'Get Node | Ambil Node',
         description:
-          'Retrieve a single asset node by its UUID, including its direct children.',
+          '**[EN]** Retrieve a single asset node by its UUID, including its direct children.\n**[ID]** Mengambil satu node aset berdasarkan UUID-nya, termasuk anak langsungnya (direct children).',
         tags: ['Nodes'],
         parameters: [
           {
@@ -398,9 +402,9 @@ Error responses follow the same structure:
       },
       patch: {
         operationId: 'updateNode',
-        summary: 'Update Node',
+        summary: 'Update Node | Perbarui Node',
         description:
-          'Partially update an asset node. Only the provided fields will be modified. At least one field must be provided.',
+          '**[EN]** Partially update an asset node. Only the provided fields will be modified. At least one field must be provided.\n**[ID]** Memperbarui sebagian dari node aset. Hanya field yang disertakan yang akan diubah. Setidaknya satu field harus disertakan.',
         tags: ['Nodes'],
         parameters: [
           {
@@ -461,9 +465,9 @@ Error responses follow the same structure:
       },
       delete: {
         operationId: 'deleteNode',
-        summary: 'Delete Node',
+        summary: 'Delete Node | Hapus Node',
         description:
-          'Delete a node. Use `mode=subtree` (default) to delete the node and all its descendants, or `mode=node` to delete only the node and reparent its children.',
+          '**[EN]** Delete a node. Use `mode=subtree` (default) to delete the node and all its descendants, or `mode=node` to delete only the node and reparent its children.\n**[ID]** Menghapus sebuah node. Gunakan `mode=subtree` (bawaan) untuk menghapus node beserta semua keturunannya, atau `mode=node` untuk menghapus hanya node tersebut dan memindahkan anak-anaknya ke induk (parent) lain.',
         tags: ['Nodes'],
         parameters: [
           {
@@ -525,9 +529,9 @@ Error responses follow the same structure:
     '/nodes/{id}/tree': {
       get: {
         operationId: 'getNodeTree',
-        summary: 'Get Node Tree',
+        summary: 'Get Node Tree | Ambil Pohon Node',
         description:
-          'Retrieve the full recursive tree structure starting from the specified node. Optionally limit the depth of traversal.',
+          '**[EN]** Retrieve the full recursive tree structure starting from the specified node. Optionally limit the depth of traversal.\n**[ID]** Mengambil seluruh struktur pohon rekursif dimulai dari node yang ditentukan. Secara opsional, batasi kedalaman penelusuran (depth).',
         tags: ['Tree Operations'],
         parameters: [
           {
@@ -576,9 +580,9 @@ Error responses follow the same structure:
     '/nodes/{id}/children': {
       get: {
         operationId: 'getDirectChildren',
-        summary: 'Get Direct Children',
+        summary: 'Get Direct Children | Ambil Anak Langsung',
         description:
-          'Retrieve only the direct (immediate) children of the specified node, without recursive traversal.',
+          '**[EN]** Retrieve only the direct (immediate) children of the specified node, without recursive traversal.\n**[ID]** Mengambil hanya anak langsung (immediate children) dari node yang ditentukan, tanpa penelusuran rekursif.',
         tags: ['Tree Operations'],
         parameters: [
           {
@@ -619,9 +623,9 @@ Error responses follow the same structure:
       },
       post: {
         operationId: 'addChildren',
-        summary: 'Add Children to Node',
+        summary: 'Add Children to Node | Tambahkan Anak ke Node',
         description:
-          'Add one or more child nodes to an existing parent node. Children can be nested recursively.',
+          '**[EN]** Add one or more child nodes to an existing parent node. Children can be nested recursively.\n**[ID]** Menambahkan satu atau lebih node anak ke node induk (parent) yang ada. Anak dapat disarangkan (nested) secara rekursif.',
         tags: ['Tree Operations'],
         parameters: [
           {
@@ -707,9 +711,9 @@ Error responses follow the same structure:
     '/nodes/{id}/move': {
       patch: {
         operationId: 'moveNode',
-        summary: 'Move Node',
+        summary: 'Move Node | Pindahkan Node',
         description:
-          'Move a node to a new parent. Set `new_parent_id` to a valid UUID to reparent, or `null` to make it a root node.',
+          '**[EN]** Move a node to a new parent. Set `new_parent_id` to a valid UUID to reparent, or `null` to make it a root node.\n**[ID]** Memindahkan node ke induk (parent) baru. Atur `new_parent_id` ke UUID yang valid untuk memindahkan induk, atau `null` untuk menjadikannya node root.',
         tags: ['Tree Operations'],
         parameters: [
           {
