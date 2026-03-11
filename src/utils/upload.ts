@@ -1,24 +1,28 @@
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { v2 as cloudinary } from 'cloudinary';
 
-// ─── Allowed MIME Types ──────────────────────────────────────────────
-const ALLOWED_TYPES: Record<string, { exts: string[]; folder: string }> = {
-  'application/pdf': { exts: ['pdf'], folder: 'pdfs' },
-  'image/jpeg': { exts: ['jpg'], folder: 'images' },
-  'image/png': { exts: ['png'], folder: 'images' },
-  'image/webp': { exts: ['webp'], folder: 'images' },
-  'image/gif': { exts: ['gif'], folder: 'images' },
-  'video/mp4': { exts: ['mp4'], folder: 'videos' },
-  'video/webm': { exts: ['webm'], folder: 'videos' },
-  'video/quicktime': { exts: ['mov'], folder: 'videos' },
+// ─── Cloudinary Config ────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ─── Allowed MIME Types ───────────────────────────────────────────────
+const ALLOWED_TYPES: Record<string, { folder: string; resourceType: 'image' | 'video' | 'raw' }> = {
+  'application/pdf': { folder: 'pdfs',   resourceType: 'raw' },
+  'image/jpeg':      { folder: 'images', resourceType: 'image' },
+  'image/png':       { folder: 'images', resourceType: 'image' },
+  'image/webp':      { folder: 'images', resourceType: 'image' },
+  'image/gif':       { folder: 'images', resourceType: 'image' },
+  'video/mp4':       { folder: 'videos', resourceType: 'video' },
+  'video/webm':      { folder: 'videos', resourceType: 'video' },
+  'video/quicktime': { folder: 'videos', resourceType: 'video' },
 };
 
-// Max file sizes
+// ─── Max file sizes ───────────────────────────────────────────────────
 const MAX_SIZE: Record<string, number> = {
-  pdfs: 20 * 1024 * 1024,    // 20 MB
-  images: 10 * 1024 * 1024,  // 10 MB
+  pdfs:   20  * 1024 * 1024, // 20 MB
+  images: 10  * 1024 * 1024, // 10 MB
   videos: 200 * 1024 * 1024, // 200 MB
 };
 
@@ -34,12 +38,10 @@ export interface UploadError {
 }
 
 /**
- * Saves a File object to disk under public/uploads/{folder}/{uuid}.{ext}
- * Returns the public URL path.
+ * Upload a File object to Cloudinary.
+ * Returns the secure URL and folder type.
  */
-export async function saveUploadedFile(
-  file: File
-): Promise<UploadResult> {
+export async function saveUploadedFile(file: File): Promise<UploadResult> {
   const mime = file.type;
   const config = ALLOWED_TYPES[mime];
 
@@ -58,24 +60,18 @@ export async function saveUploadedFile(
     );
   }
 
-  // Ensure directory exists
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', config.folder);
-  if (!existsSync(uploadDir)) {
-    await mkdir(uploadDir, { recursive: true });
-  }
-
-  // Generate unique filename
-  const ext = config.exts[0];
-  const filename = `${uuidv4()}.${ext}`;
-  const filePath = path.join(uploadDir, filename);
-
-  // Write file to disk
+  // Convert File to Buffer, then encode as base64 data URI for serverless compatibility
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
+  const base64 = buffer.toString('base64');
+  const dataUri = `data:${mime};base64,${base64}`;
 
-  const url = `/uploads/${config.folder}/${filename}`;
+  // Upload to Cloudinary using base64 data URI (works reliably in serverless/Vercel)
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: `digital-twin/${config.folder}`,
+    resource_type: config.resourceType,
+  });
 
-  return { url, folder: config.folder as 'pdfs' | 'images' | 'videos' };
+  return { url: result.secure_url, folder: config.folder as 'pdfs' | 'images' | 'videos' };
 }
 
 /**
@@ -97,8 +93,7 @@ export async function processFormFiles(formData: FormData): Promise<{
   const fieldMappings = ['pdfs', 'images', 'videos'];
 
   for (const fieldName of fieldMappings) {
-    // Support both "pdfs" and "pdfs[]" field names for Unity/curl compatibility
-    const files = formData.getAll(fieldName) as File[];
+    const files    = formData.getAll(fieldName)        as File[];
     const filesAlt = formData.getAll(`${fieldName}[]`) as File[];
     const allFiles = [...files, ...filesAlt].filter(
       (f): f is File => f instanceof File && f.size > 0
@@ -107,15 +102,20 @@ export async function processFormFiles(formData: FormData): Promise<{
     for (const file of allFiles) {
       try {
         const result = await saveUploadedFile(file);
-        if (result.folder === 'pdfs') pdfs.push(result.url);
+        if (result.folder === 'pdfs')        pdfs.push(result.url);
         else if (result.folder === 'images') images.push(result.url);
         else if (result.folder === 'videos') videos.push(result.url);
-      } catch (err) {
-        errors.push({
-          field: fieldName,
-          filename: file.name,
-          message: err instanceof Error ? err.message : 'Unknown error',
-        });
+      } catch (err: unknown) {
+        let message = 'Unknown error';
+        if (err instanceof Error) {
+          message = err.message;
+        } else if (typeof err === 'object' && err !== null && 'message' in err) {
+          message = String((err as Record<string, unknown>).message);
+        } else if (typeof err === 'string') {
+          message = err;
+        }
+        console.error(`[upload] Failed to upload "${file.name}":`, err);
+        errors.push({ field: fieldName, filename: file.name, message });
       }
     }
   }
@@ -124,18 +124,26 @@ export async function processFormFiles(formData: FormData): Promise<{
 }
 
 /**
- * Delete a physical file from disk given its public URL path.
+ * Delete a file from Cloudinary given its secure URL.
  * Silently ignores if the file doesn't exist.
  */
 export async function deleteFileFromDisk(publicUrl: string): Promise<void> {
   try {
-    // Only delete files under /uploads/ to prevent path traversal
-    if (!publicUrl.startsWith('/uploads/')) return;
+    // Extract public_id from Cloudinary URL
+    // e.g. https://res.cloudinary.com/<cloud>/image/upload/v123/digital-twin/images/abc.jpg
+    //   → digital-twin/images/abc
+    const match = publicUrl.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+    if (!match) return;
 
-    const filePath = path.join(process.cwd(), 'public', publicUrl);
-    const { unlink } = await import('fs/promises');
-    await unlink(filePath);
+    const publicId = match[1];
+
+    // Determine resource_type from path
+    let resourceType: 'image' | 'video' | 'raw' = 'image';
+    if (publicUrl.includes('/videos/'))   resourceType = 'video';
+    else if (publicUrl.includes('/pdfs/')) resourceType = 'raw';
+
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch {
-    // Silently ignore — file may already be deleted
+    // Silently ignore — file may already be deleted or URL format unrecognized
   }
 }
