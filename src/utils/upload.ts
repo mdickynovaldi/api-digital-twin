@@ -38,8 +38,8 @@ export interface UploadError {
 }
 
 /**
- * Upload a File object to Cloudinary.
- * Returns the secure URL and folder type.
+ * Upload a File object to Cloudinary using upload_stream.
+ * Uses streaming to avoid base64 memory overhead for large files (e.g. videos up to 200MB).
  */
 export async function saveUploadedFile(file: File): Promise<UploadResult> {
   const mime = file.type;
@@ -60,15 +60,22 @@ export async function saveUploadedFile(file: File): Promise<UploadResult> {
     );
   }
 
-  // Convert File to Buffer, then encode as base64 data URI for serverless compatibility
+  // Upload to Cloudinary via upload_stream (avoids base64 encoding overhead for large files)
   const buffer = Buffer.from(await file.arrayBuffer());
-  const base64 = buffer.toString('base64');
-  const dataUri = `data:${mime};base64,${base64}`;
 
-  // Upload to Cloudinary using base64 data URI (works reliably in serverless/Vercel)
-  const result = await cloudinary.uploader.upload(dataUri, {
-    folder: `digital-twin/${config.folder}`,
-    resource_type: config.resourceType,
+  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `digital-twin/${config.folder}`,
+        resource_type: config.resourceType,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result) return reject(new Error('Cloudinary returned no result'));
+        resolve(result);
+      }
+    );
+    stream.end(buffer);
   });
 
   return { url: result.secure_url, folder: config.folder as 'pdfs' | 'images' | 'videos' };

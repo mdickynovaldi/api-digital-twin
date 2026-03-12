@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { nodeService } from '@/src/services/node.service';
 import { processFormFiles, deleteFileFromDisk } from '@/src/utils/upload';
+import { generateUploadSignature } from '@/src/services/upload.service';
 import { successResponse, errorResponse } from '@/src/utils/response';
 import { AppError } from '@/src/middleware';
 
@@ -139,4 +140,72 @@ uploadRoutes.get('/:id/files', async (c) => {
   }
 });
 
+// ─── POST /nodes/:id/files/sign ───────────────────────────────────────
+// Generate a Cloudinary signed upload signature for direct client uploads.
+// Use this for large files (e.g. videos) to bypass Vercel's 4.5MB payload limit.
+//
+// Content-Type: application/json
+// Body:
+//   { "type": "video" }   → type: 'pdf' | 'image' | 'video'
+//
+// Response:
+//   { signature, timestamp, cloudName, apiKey, folder }
+//
+// Unity Example (C#):
+//   1. Call this endpoint to get the signature
+//   2. POST the file directly to:
+//      https://api.cloudinary.com/v1_1/{cloudName}/video/upload
+//      with fields: file, api_key, timestamp, signature, folder
+//   3. Call /nodes/:id/files/confirm with the returned secure_url
+//
+const signSchema = z.object({
+  type: z.enum(['pdf', 'image', 'video']),
+});
+
+const folderMap: Record<string, 'pdfs' | 'images' | 'videos'> = {
+  pdf: 'pdfs',
+  image: 'images',
+  video: 'videos',
+};
+
+uploadRoutes.post('/:id/files/sign', async (c) => {
+  const body = await c.req.json();
+  const parsed = signSchema.parse(body);
+  const folder = folderMap[parsed.type];
+  const sign = generateUploadSignature(folder);
+  return c.json(successResponse(sign));
+});
+
+// ─── POST /nodes/:id/files/confirm ────────────────────────────────────
+// After client uploads a file directly to Cloudinary, call this to save the URL.
+//
+// Content-Type: application/json
+// Body:
+//   {
+//     "type": "video",       → 'pdf' | 'image' | 'video'
+//     "url": "https://res.cloudinary.com/..."
+//   }
+//
+const confirmSchema = z.object({
+  type: z.enum(['pdf', 'image', 'video']),
+  url: z.string().url(),
+});
+
+uploadRoutes.post('/:id/files/confirm', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const parsed = confirmSchema.parse(body);
+  const folder = folderMap[parsed.type];
+
+  const files = {
+    pdfs:   folder === 'pdfs'   ? [parsed.url] : [],
+    images: folder === 'images' ? [parsed.url] : [],
+    videos: folder === 'videos' ? [parsed.url] : [],
+  };
+
+  const result = await nodeService.addFiles(id, files);
+  return c.json(successResponse(result, { confirmed: { [folder]: [parsed.url] } }), 200);
+});
+
 export default uploadRoutes;
+

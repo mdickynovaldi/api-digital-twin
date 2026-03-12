@@ -160,6 +160,12 @@ app.notFound((c) => {
   );
 });
 
+// ─── Route Segment Config ────────────────────────────────────────
+// Disable Next.js body size limit so large file uploads (videos up to 200MB) can pass through.
+// The actual per-file limits are enforced in src/utils/upload.ts.
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 seconds timeout for large uploads
+
 // ─── Export handlers for Next.js App Router ──────────────────────────
 export const GET = handle(app);
 export const POST = handle(app);
