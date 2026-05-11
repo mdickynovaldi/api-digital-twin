@@ -37,6 +37,32 @@ export async function errorHandler(c: Context, next: Next) {
   } catch (err: unknown) {
     console.error('[ERROR]', err);
 
+    const maybeHttpError = err as {
+      code?: unknown;
+      message?: unknown;
+      status?: unknown;
+      statusCode?: unknown;
+    };
+    const maybeStatusCode =
+      typeof maybeHttpError.statusCode === 'number'
+        ? maybeHttpError.statusCode
+        : typeof maybeHttpError.status === 'number'
+          ? maybeHttpError.status
+          : undefined;
+    if (maybeStatusCode && maybeStatusCode >= 400 && maybeStatusCode <= 599) {
+      return c.json(
+        errorResponse(
+          typeof maybeHttpError.message === 'string'
+            ? maybeHttpError.message
+            : 'Application error',
+          typeof maybeHttpError.code === 'string'
+            ? maybeHttpError.code
+            : 'APP_ERROR'
+        ),
+        maybeStatusCode as ContentfulStatusCode
+      );
+    }
+
     // Handle Zod validation errors
     if (err instanceof ZodError) {
       return c.json(
@@ -53,16 +79,50 @@ export async function errorHandler(c: Context, next: Next) {
     }
 
     // Handle known application errors
-    if (err instanceof AppError) {
+    if (
+      err instanceof AppError ||
+      (
+        err &&
+        typeof err === 'object' &&
+        'statusCode' in err &&
+        'code' in err &&
+        'message' in err
+      )
+    ) {
+      const appError = err as AppError;
       return c.json(
-        errorResponse(err.message, err.code),
-        err.statusCode as ContentfulStatusCode
+        errorResponse(appError.message, appError.code),
+        appError.statusCode as ContentfulStatusCode
       );
     }
 
     // Handle Prisma errors
     if (err && typeof err === 'object' && 'code' in err) {
-      const prismaError = err as { code: string; message: string; meta?: unknown };
+      const codedError = err as {
+        code: string;
+        message?: string;
+        status?: number;
+        statusCode?: number;
+        meta?: unknown;
+      };
+      if (typeof codedError.code === 'string' && !codedError.code.startsWith('P')) {
+        const statusCode =
+          typeof codedError.statusCode === 'number'
+            ? codedError.statusCode
+            : typeof codedError.status === 'number'
+              ? codedError.status
+              : 400;
+
+        return c.json(
+          errorResponse(
+            codedError.message || 'Application error',
+            codedError.code
+          ),
+          statusCode as ContentfulStatusCode
+        );
+      }
+
+      const prismaError = codedError as { code: string; message: string; meta?: unknown };
       if (prismaError.code === 'P2025') {
         return c.json(errorResponse('Record not found', 'NOT_FOUND'), 404);
       }

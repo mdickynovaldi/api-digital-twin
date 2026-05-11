@@ -3,6 +3,11 @@ import { handle } from 'hono/vercel';
 import { corsMiddleware, loggerMiddleware, errorHandler } from '@/src/middleware';
 import nodeRoutes from '@/src/routes/node.routes';
 import screenshotRoutes from '@/src/routes/screenshot.routes';
+import authRoutes from '@/src/routes/auth.routes';
+import anomalyRoutes from '@/src/routes/anomaly.routes';
+import maintenanceRoutes from '@/src/routes/maintenance.routes';
+import notificationRoutes from '@/src/routes/notification.routes';
+import unityRoutes from '@/src/routes/unity.routes';
 import { openApiSpec } from '@/src/docs/openapi';
 
 // ─── Create Hono app with base path /api ────────────────────────────
@@ -145,8 +150,13 @@ app.get('/health', (c) => {
 });
 
 // ─── Mount Node Routes ──────────────────────────────────────────────
+app.route('/auth', authRoutes);
 app.route('/nodes', nodeRoutes);
 app.route('/screenshots', screenshotRoutes);
+app.route('/anomalies', anomalyRoutes);
+app.route('/maintenance', maintenanceRoutes);
+app.route('/notifications', notificationRoutes);
+app.route('/unity', unityRoutes);
 
 // ─── 404 Fallback ───────────────────────────────────────────────────
 app.notFound((c) => {

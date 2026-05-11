@@ -65,6 +65,10 @@ npm run setup
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/health` | Health check |
+| `POST` | `/api/auth/register` | Register user (`operator` or `maintenance`) |
+| `POST` | `/api/auth/login` | Login and receive bearer token |
+| `GET` | `/api/auth/me` | Get authenticated user |
+| `POST` | `/api/auth/logout` | Revoke current bearer token |
 | `POST` | `/api/nodes` | Create root/nested node |
 | `GET` | `/api/nodes` | List nodes (`?rootOnly=true&page=1&limit=50`) |
 | `GET` | `/api/nodes/:id` | Get single node (with direct children) |
@@ -79,6 +83,19 @@ npm run setup
 | `GET` | `/api/screenshots` | List uploaded screenshots |
 | `GET` | `/api/screenshots/:id` | Get screenshot detail |
 | `GET` | `/api/screenshots/:id/file` | Render screenshot image |
+| `POST` | `/api/anomalies` | Operator reports anomaly/ticket separate from screenshot |
+| `GET` | `/api/anomalies` | List anomalies (`status`, `asset_node_id`, `reported_by_me`, `assigned_to_me`) |
+| `GET` | `/api/anomalies/:id` | Get anomaly detail with audit trail |
+| `GET` | `/api/maintenance/anomalies` | Maintenance anomaly queue |
+| `PATCH` | `/api/maintenance/anomalies/:id/acknowledge` | Maintenance acknowledges anomaly |
+| `PATCH` | `/api/maintenance/anomalies/:id/start` | Maintenance marks in progress |
+| `PATCH` | `/api/maintenance/anomalies/:id/solve` | Maintenance submits field result and resolves |
+| `PATCH` | `/api/maintenance/anomalies/:id/reject` | Maintenance rejects anomaly |
+| `POST` | `/api/maintenance/anomalies/:id/photos` | Upload maintenance result photos |
+| `GET` | `/api/maintenance/photos/:id/file` | Render maintenance photo |
+| `GET` | `/api/notifications` | Current user's notifications |
+| `PATCH` | `/api/notifications/:id/read` | Mark notification read |
+| `GET` | `/api/unity/anomaly-markers` | Unity marker/check flags per anomaly |
 
 ---
 
@@ -233,6 +250,63 @@ curl "http://localhost:3000/api/screenshots?page=1&limit=20"
 ```bash
 curl http://localhost:3000/api/screenshots/{screenshot-id}/file --output screenshot.png
 ```
+
+### Register and login
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"operator1","password":"secret123","display_name":"Operator 1","role":"operator"}'
+
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"maintenance1","password":"secret123","display_name":"Maintenance 1","role":"maintenance"}'
+```
+
+Use the returned `data.token` as `Authorization: Bearer <token>`.
+
+### Report anomaly as operator
+```bash
+curl -X POST http://localhost:3000/api/anomalies \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {operator-token}" \
+  -d '{
+    "asset_node_id": "{asset-node-uuid}",
+    "screenshot_id": "{optional-screenshot-uuid}",
+    "title": "Abnormal vibration",
+    "description": "Vibration marker appears above motor bearing",
+    "severity": "high"
+  }'
+```
+
+### Maintenance workflow
+```bash
+curl -X PATCH http://localhost:3000/api/maintenance/anomalies/{anomaly-id}/acknowledge \
+  -H "Authorization: Bearer {maintenance-token}" \
+  -H "Content-Type: application/json" \
+  -d '{"note":"Checked from maintenance queue"}'
+
+curl -X PATCH http://localhost:3000/api/maintenance/anomalies/{anomaly-id}/start \
+  -H "Authorization: Bearer {maintenance-token}" \
+  -H "Content-Type: application/json" \
+  -d '{"note":"Technician dispatched"}'
+
+curl -X POST http://localhost:3000/api/maintenance/anomalies/{anomaly-id}/photos \
+  -H "Authorization: Bearer {maintenance-token}" \
+  -F "photos[]=@./after-repair.jpg" \
+  -F "caption=After bearing replacement"
+
+curl -X PATCH http://localhost:3000/api/maintenance/anomalies/{anomaly-id}/solve \
+  -H "Authorization: Bearer {maintenance-token}" \
+  -H "Content-Type: application/json" \
+  -d '{"field_notes":"Bearing replaced and vibration normalized","actions_taken":["replace bearing","verify vibration"]}'
+```
+
+### Unity anomaly flags
+```bash
+curl "http://localhost:3000/api/unity/anomaly-markers?asset_node_id={asset-node-uuid}"
+```
+
+Each marker contains `unity_flags.marker_visible`, `unity_flags.resolved_check_visible`, and `unity_flags.marker_state` (`anomaly_marker`, `resolved_check`, or `hidden`).
 
 ---
 

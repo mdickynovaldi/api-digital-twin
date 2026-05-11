@@ -10,6 +10,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  OPERATOR    @map("operator")
+  MAINTENANCE @map("maintenance")
+
+  @@map("user_role")
+}
+
+enum AnomalyStatus {
+  OPEN         @map("open")
+  ACKNOWLEDGED @map("acknowledged")
+  IN_PROGRESS  @map("in_progress")
+  RESOLVED     @map("resolved")
+  REJECTED     @map("rejected")
+
+  @@map("anomaly_status")
+}
+
 /// AssetNode represents a machine or part in the digital twin tree.
 /// Uses adjacency list pattern for recursive self-relation.
 model AssetNode {
@@ -43,6 +60,7 @@ model AssetNode {
   parent      AssetNode?              @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
   children    AssetNode[]             @relation("NodeTree")
   screenshots DigitalTwinScreenshot[]
+  anomalies   AnomalyTicket[]
 
   // Array fields stored as PostgreSQL text arrays
   tags              String[] @default([])
@@ -64,6 +82,45 @@ model AssetNode {
   @@map("asset_nodes")
 }
 
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @default("") @map("display_name")
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+
+  sessions           AuthSession[]
+  reportedAnomalies  AnomalyTicket[]     @relation("ReportedAnomalies")
+  assignedAnomalies  AnomalyTicket[]     @relation("AssignedMaintenance")
+  solvedAnomalies    AnomalyTicket[]     @relation("SolvedAnomalies")
+  maintenanceResults MaintenanceResult[]
+  maintenancePhotos  MaintenancePhoto[]
+  notifications      Notification[]
+  anomalyAuditLogs   AnomalyAuditLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model AuthSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime @map("expires_at")
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
 /// Screenshot uploaded from Unity digital twin sessions.
 /// Stored as file metadata and binary image data for maintenance views.
 model DigitalTwinScreenshot {
@@ -74,13 +131,14 @@ model DigitalTwinScreenshot {
   title       String @default("")
   description String @default("")
 
-  fileName     String @map("file_name")
-  originalName String @map("original_name")
-  mimeType     String @map("mime_type")
-  sizeBytes    Int    @map("size_bytes")
-  fileData     Bytes  @map("file_data")
+  fileName     String          @map("file_name")
+  originalName String          @map("original_name")
+  mimeType     String          @map("mime_type")
+  sizeBytes    Int             @map("size_bytes")
+  fileData     Bytes           @map("file_data")
   url          String
-  storagePath  String @map("storage_path")
+  storagePath  String          @map("storage_path")
+  anomalies    AnomalyTicket[]
 
   capturedAt DateTime? @map("captured_at")
   uploadedBy String?   @map("uploaded_by")
@@ -92,4 +150,139 @@ model DigitalTwinScreenshot {
   @@index([assetNodeId])
   @@index([createdAt])
   @@map("digital_twin_screenshots")
+}
+
+model AnomalyTicket {
+  id          String     @id @default(uuid()) @db.Uuid
+  assetNodeId String?    @map("asset_node_id") @db.Uuid
+  assetNode   AssetNode? @relation(fields: [assetNodeId], references: [id], onDelete: SetNull)
+
+  screenshotId String?                @map("screenshot_id") @db.Uuid
+  screenshot   DigitalTwinScreenshot? @relation(fields: [screenshotId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String        @default("")
+  severity    String        @default("medium")
+  status      AnomalyStatus @default(OPEN)
+  metadata    Json?
+
+  reportedById String? @map("reported_by_id") @db.Uuid
+  reportedBy   User?   @relation("ReportedAnomalies", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  assignedMaintenanceId String? @map("assigned_maintenance_id") @db.Uuid
+  assignedMaintenance   User?   @relation("AssignedMaintenance", fields: [assignedMaintenanceId], references: [id], onDelete: SetNull)
+
+  solvedById String?   @map("solved_by_id") @db.Uuid
+  solvedBy   User?     @relation("SolvedAnomalies", fields: [solvedById], references: [id], onDelete: SetNull)
+  solvedAt   DateTime? @map("solved_at")
+  rejectedAt DateTime? @map("rejected_at")
+
+  unityMarkerVisible        Boolean @default(true) @map("unity_marker_visible")
+  unityResolvedCheckVisible Boolean @default(false) @map("unity_resolved_check_visible")
+
+  maintenanceResult MaintenanceResult?
+  maintenancePhotos MaintenancePhoto[]
+  notifications     Notification[]
+  auditLogs         AnomalyAuditLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([assetNodeId])
+  @@index([screenshotId])
+  @@index([status])
+  @@index([reportedById])
+  @@index([assignedMaintenanceId])
+  @@index([solvedById])
+  @@index([createdAt])
+  @@map("anomaly_tickets")
+}
+
+model MaintenanceResult {
+  id            String        @id @default(uuid()) @db.Uuid
+  anomalyId     String        @unique @map("anomaly_id") @db.Uuid
+  anomaly       AnomalyTicket @relation(fields: [anomalyId], references: [id], onDelete: Cascade)
+  submittedById String?       @map("submitted_by_id") @db.Uuid
+  submittedBy   User?         @relation(fields: [submittedById], references: [id], onDelete: SetNull)
+
+  fieldNotes   String   @default("") @map("field_notes")
+  actionsTaken String[] @default([]) @map("actions_taken")
+  metadata     Json?
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([submittedById])
+  @@index([submittedAt])
+  @@map("maintenance_results")
+}
+
+model MaintenancePhoto {
+  id        String        @id @default(uuid()) @db.Uuid
+  anomalyId String        @map("anomaly_id") @db.Uuid
+  anomaly   AnomalyTicket @relation(fields: [anomalyId], references: [id], onDelete: Cascade)
+
+  uploadedById String? @map("uploaded_by_id") @db.Uuid
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  caption      String @default("")
+  fileName     String @map("file_name")
+  originalName String @map("original_name")
+  mimeType     String @map("mime_type")
+  sizeBytes    Int    @map("size_bytes")
+  fileData     Bytes  @map("file_data")
+  url          String
+  storagePath  String @map("storage_path")
+  metadata     Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([anomalyId])
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@map("maintenance_photos")
+}
+
+model Notification {
+  id          String         @id @default(uuid()) @db.Uuid
+  recipientId String         @map("recipient_id") @db.Uuid
+  recipient   User           @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  anomalyId   String?        @map("anomaly_id") @db.Uuid
+  anomaly     AnomalyTicket? @relation(fields: [anomalyId], references: [id], onDelete: Cascade)
+
+  type    String
+  title   String
+  message String
+  isRead  Boolean   @default(false) @map("is_read")
+  readAt  DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([recipientId])
+  @@index([anomalyId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AnomalyAuditLog {
+  id        String        @id @default(uuid()) @db.Uuid
+  anomalyId String        @map("anomaly_id") @db.Uuid
+  anomaly   AnomalyTicket @relation(fields: [anomalyId], references: [id], onDelete: Cascade)
+
+  actorId String? @map("actor_id") @db.Uuid
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  action     String
+  fromStatus AnomalyStatus? @map("from_status")
+  toStatus   AnomalyStatus? @map("to_status")
+  note       String         @default("")
+  metadata   Json?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([anomalyId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("anomaly_audit_logs")
 }
