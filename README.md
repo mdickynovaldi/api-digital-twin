@@ -233,6 +233,11 @@ curl "http://localhost:3000/api/screenshots?page=1&limit=20"
 curl "http://localhost:3000/api/screenshots?asset_node_id={asset-node-uuid}"
 ```
 
+### Render screenshot image
+```bash
+curl http://localhost:3000/api/screenshots/{screenshot-id}/file --output screenshot.png
+```
+
 ---
 
 ## Unity Integration Notes
@@ -243,7 +248,7 @@ curl "http://localhost:3000/api/screenshots?asset_node_id={asset-node-uuid}"
 4. **Recursive tree**: `GET /api/nodes/:id/tree` returns the full hierarchy — parse it recursively in Unity
 5. **Snake_case**: Response fields use `snake_case` (e.g. `is_active`, `parent_id`, `rotate_xyz`)
 6. **Content-Type**: Send `Content-Type: application/json` for node POST/PATCH requests
-7. **Screenshots**: Send screenshot uploads as `multipart/form-data` with image field `file` or `screenshot`
+7. **Screenshots**: Send screenshot uploads as `multipart/form-data` with image field `file` or `screenshot`; response `url` points to an API image endpoint that works on Vercel
 
 ### C# UnityWebRequest Example
 ```csharp

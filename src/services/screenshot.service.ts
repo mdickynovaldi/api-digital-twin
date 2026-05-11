@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from '@prisma/client';
 import { nodeRepository } from '@/src/repositories/node.repository';
@@ -10,13 +9,7 @@ import {
 import type { UploadScreenshotFieldsInput } from '@/src/schemas/screenshot.schema';
 import { AppError } from '@/src/middleware';
 
-const UPLOAD_DIRECTORY = path.join(
-  process.cwd(),
-  'public',
-  'uploads',
-  'digital-twin-screenshots'
-);
-const PUBLIC_URL_PREFIX = '/uploads/digital-twin-screenshots';
+const STORAGE_PATH_PREFIX = 'db://digital_twin_screenshots';
 const DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/png': '.png',
@@ -120,33 +113,28 @@ export const screenshotService = {
     }
 
     const { mimeType, extension } = resolveImageType(file);
+    const screenshotId = randomUUID();
     const fileName = `${randomUUID()}${extension}`;
-    const storagePath = path.join(UPLOAD_DIRECTORY, fileName);
-    const publicUrl = `${PUBLIC_URL_PREFIX}/${fileName}`;
+    const storagePath = `${STORAGE_PATH_PREFIX}/${screenshotId}`;
+    const publicUrl = `/api/screenshots/${screenshotId}/file`;
+    const fileData = Buffer.from(await file.arrayBuffer());
 
-    await mkdir(UPLOAD_DIRECTORY, { recursive: true });
-    await writeFile(storagePath, Buffer.from(await file.arrayBuffer()));
-
-    let created: ScreenshotWithAssetNode;
-    try {
-      created = await screenshotRepository.create({
-        assetNodeId: fields.asset_node_id ?? null,
-        title: fields.title ?? '',
-        description: fields.description ?? '',
-        fileName,
-        originalName: path.basename(file.name || fileName),
-        mimeType,
-        sizeBytes: file.size,
-        url: publicUrl,
-        storagePath,
-        capturedAt: fields.captured_at ? new Date(fields.captured_at) : null,
-        uploadedBy: fields.uploaded_by ?? null,
-        metadata: fields.metadata as Prisma.InputJsonValue | undefined,
-      });
-    } catch (error) {
-      await unlink(storagePath).catch(() => undefined);
-      throw error;
-    }
+    const created = await screenshotRepository.create({
+      id: screenshotId,
+      assetNodeId: fields.asset_node_id ?? null,
+      title: fields.title ?? '',
+      description: fields.description ?? '',
+      fileName,
+      originalName: path.basename(file.name || fileName),
+      mimeType,
+      sizeBytes: file.size,
+      fileData,
+      url: publicUrl,
+      storagePath,
+      capturedAt: fields.captured_at ? new Date(fields.captured_at) : null,
+      uploadedBy: fields.uploaded_by ?? null,
+      metadata: fields.metadata as Prisma.InputJsonValue | undefined,
+    });
 
     return transformScreenshot(created);
   },
@@ -188,5 +176,19 @@ export const screenshotService = {
     }
 
     return transformScreenshot(screenshot);
+  },
+
+  async getScreenshotFile(id: string): Promise<{
+    fileData: Uint8Array;
+    mimeType: string;
+    originalName: string;
+    sizeBytes: number;
+  }> {
+    const file = await screenshotRepository.findFileById(id);
+    if (!file) {
+      throw new AppError('Screenshot not found', 404, 'NOT_FOUND');
+    }
+
+    return file;
   },
 };

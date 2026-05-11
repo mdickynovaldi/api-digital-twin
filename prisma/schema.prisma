@@ -48,6 +48,9 @@ model AssetNode {
   tags              String[] @default([])
   categories        String[] @default([])
   dependentCategory String[] @default([]) @map("dependent_category")
+  images            String[] @default([])
+  pdfs              String[] @default([])
+  videos            String[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -73,6 +76,7 @@ model DigitalTwinScreenshot {
   originalName String @map("original_name")
   mimeType     String @map("mime_type")
   sizeBytes    Int    @map("size_bytes")
+  fileData     Bytes  @map("file_data")
   url          String
   storagePath  String @map("storage_path")
 

@@ -106,6 +106,26 @@ screenshotRoutes.get('/', async (c) => {
   );
 });
 
+// ─── GET /screenshots/:id/file — Render screenshot image ───────────
+screenshotRoutes.get('/:id/file', async (c) => {
+  const id = c.req.param('id');
+  const file = await screenshotService.getScreenshotFile(id);
+  const body = file.fileData.buffer.slice(
+    file.fileData.byteOffset,
+    file.fileData.byteOffset + file.fileData.byteLength
+  ) as ArrayBuffer;
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'Content-Type': file.mimeType,
+      'Content-Length': String(file.sizeBytes),
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Disposition': `inline; filename="${file.originalName.replaceAll('"', '')}"`,
+    },
+  });
+});
+
 // ─── GET /screenshots/:id — Get screenshot detail ──────────────────
 screenshotRoutes.get('/:id', async (c) => {
   const id = c.req.param('id');

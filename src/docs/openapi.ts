@@ -950,6 +950,43 @@ Error responses follow the same structure:
         },
       },
     },
+
+    '/screenshots/{id}/file': {
+      get: {
+        operationId: 'getScreenshotFile',
+        summary: 'Get Screenshot File',
+        description:
+          'Render the uploaded screenshot image. The `url` field from screenshot responses points to this endpoint.',
+        tags: ['Screenshots'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the screenshot',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Screenshot image bytes',
+            content: {
+              'image/png': { schema: { type: 'string', format: 'binary' } },
+              'image/jpeg': { schema: { type: 'string', format: 'binary' } },
+              'image/webp': { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+          '404': {
+            description: 'Screenshot not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 
   // ─── Components ───────────────────────────────────────────────────
@@ -1239,7 +1276,7 @@ Error responses follow the same structure:
           url: {
             type: 'string',
             example:
-              '/uploads/digital-twin-screenshots/de305d54-75b4-431b-adb2-eb6b9e546014.png',
+              '/api/screenshots/de305d54-75b4-431b-adb2-eb6b9e546014/file',
           },
           captured_at: {
             type: 'string',
