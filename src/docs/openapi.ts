@@ -89,6 +89,11 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
       name: 'Bulk Operations',
       description: 'Batch operations for tree structures | Operasi massal untuk struktur pohon',
     },
+    {
+      name: 'Screenshots',
+      description:
+        'Unity screenshot uploads for maintenance views | Unggah screenshot Unity untuk tampilan maintenance',
+    },
   ],
   paths: {
     // ─── Health Check ─────────────────────────────────────────────────
@@ -976,6 +981,224 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
         },
       },
     },
+
+    // ─── Screenshots ──────────────────────────────────────────────────
+    '/screenshots': {
+      get: {
+        operationId: 'listScreenshots',
+        summary: 'List Screenshots | Daftar Screenshot',
+        description:
+          '**[EN]** Retrieve uploaded Unity screenshots for maintenance views, optionally filtered by asset node.\n**[ID]** Mengambil daftar screenshot Unity untuk tampilan maintenance, opsional difilter berdasarkan asset node.',
+        tags: ['Screenshots'],
+        parameters: [
+          {
+            name: 'asset_node_id',
+            in: 'query',
+            description: 'Filter screenshots by linked asset node UUID',
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'page',
+            in: 'query',
+            description: 'Page number (1-indexed)',
+            schema: { type: 'integer', default: 1, minimum: 1 },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            description: 'Items per page',
+            schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Paginated screenshot list',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'array',
+                      items: {
+                        $ref: '#/components/schemas/DigitalTwinScreenshot',
+                      },
+                    },
+                    meta: { $ref: '#/components/schemas/PaginationMeta' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: 'uploadScreenshot',
+        summary: 'Upload Screenshot | Unggah Screenshot',
+        description:
+          '**[EN]** Upload a Unity digital twin screenshot using `multipart/form-data`. Use form field `file` or `screenshot` for the image.\n**[ID]** Mengunggah screenshot digital twin dari Unity memakai `multipart/form-data`. Gunakan field `file` atau `screenshot` untuk gambar.',
+        tags: ['Screenshots'],
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['file'],
+                properties: {
+                  file: {
+                    type: 'string',
+                    format: 'binary',
+                    description:
+                      'Screenshot image file. PNG, JPG, and WebP are supported.',
+                  },
+                  asset_node_id: {
+                    type: 'string',
+                    format: 'uuid',
+                    description: 'Optional asset node UUID related to capture',
+                  },
+                  title: { type: 'string', maxLength: 255 },
+                  description: { type: 'string' },
+                  captured_at: {
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Timestamp from Unity when capture was taken',
+                  },
+                  uploaded_by: {
+                    type: 'string',
+                    maxLength: 255,
+                    description: 'Optional uploader/user identifier',
+                  },
+                  metadata: {
+                    type: 'string',
+                    description:
+                      'Optional JSON object string for Unity-specific context',
+                    example: '{"scene":"FactoryFloor","camera":"MainCamera"}',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Screenshot uploaded successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      $ref: '#/components/schemas/DigitalTwinScreenshot',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid request or unsupported file type',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '413': {
+            description: 'Uploaded file is too large',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    '/screenshots/{id}': {
+      get: {
+        operationId: 'getScreenshot',
+        summary: 'Get Screenshot | Ambil Screenshot',
+        description:
+          '**[EN]** Retrieve one uploaded screenshot by UUID.\n**[ID]** Mengambil satu data screenshot berdasarkan UUID.',
+        tags: ['Screenshots'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the screenshot',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Screenshot detail',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      $ref: '#/components/schemas/DigitalTwinScreenshot',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '404': {
+            description: 'Screenshot not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    '/screenshots/{id}/file': {
+      get: {
+        operationId: 'getScreenshotFile',
+        summary: 'Get Screenshot File | Ambil File Screenshot',
+        description:
+          '**[EN]** Render the uploaded screenshot image. The `url` field from screenshot responses points to this endpoint.\n**[ID]** Merender file gambar screenshot. Field `url` dari respons screenshot mengarah ke endpoint ini.',
+        tags: ['Screenshots'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'UUID of the screenshot',
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Screenshot image bytes',
+            content: {
+              'image/png': { schema: { type: 'string', format: 'binary' } },
+              'image/jpeg': { schema: { type: 'string', format: 'binary' } },
+              'image/webp': { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+          '404': {
+            description: 'Screenshot not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 
   // ─── Components ───────────────────────────────────────────────────
@@ -1240,6 +1463,77 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
             items: { $ref: '#/components/schemas/BulkUpsertNodeInput' },
             default: [],
             description: 'Nested children to upsert recursively',
+          },
+        },
+      },
+
+      DigitalTwinScreenshot: {
+        type: 'object',
+        description: 'Screenshot uploaded from Unity digital twin sessions',
+        properties: {
+          id: {
+            type: 'string',
+            format: 'uuid',
+            example: 'de305d54-75b4-431b-adb2-eb6b9e546014',
+          },
+          asset_node_id: {
+            type: 'string',
+            format: 'uuid',
+            nullable: true,
+            example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+          },
+          asset_node: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              name: { type: 'string', example: 'CNC Machine A1' },
+              status: { type: 'string', example: 'Machine' },
+            },
+          },
+          title: { type: 'string', example: 'Overheat warning capture' },
+          description: {
+            type: 'string',
+            example: 'Screenshot captured from Unity inspection camera',
+          },
+          file_name: {
+            type: 'string',
+            example: 'de305d54-75b4-431b-adb2-eb6b9e546014.png',
+          },
+          original_name: { type: 'string', example: 'capture.png' },
+          mime_type: { type: 'string', example: 'image/png' },
+          size_bytes: { type: 'integer', example: 481226 },
+          url: {
+            type: 'string',
+            example:
+              '/api/screenshots/de305d54-75b4-431b-adb2-eb6b9e546014/file',
+          },
+          captured_at: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+            example: '2026-05-11T09:30:00.000Z',
+          },
+          uploaded_by: {
+            type: 'string',
+            nullable: true,
+            example: 'unity-client',
+          },
+          metadata: {
+            type: 'object',
+            nullable: true,
+            additionalProperties: true,
+            example: { scene: 'FactoryFloor', camera: 'MainCamera' },
+          },
+          created_at: {
+            type: 'string',
+            format: 'date-time',
+            example: '2026-05-11T09:30:02.000Z',
+          },
+          updated_at: {
+            type: 'string',
+            format: 'date-time',
+            example: '2026-05-11T09:30:02.000Z',
           },
         },
       },

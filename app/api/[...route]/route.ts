@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { handle } from 'hono/vercel';
 import { corsMiddleware, loggerMiddleware, errorHandler } from '@/src/middleware';
 import nodeRoutes from '@/src/routes/node.routes';
+import screenshotRoutes from '@/src/routes/screenshot.routes';
 import { openApiSpec } from '@/src/docs/openapi';
 
 // ─── Create Hono app with base path /api ────────────────────────────
@@ -145,6 +146,7 @@ app.get('/health', (c) => {
 
 // ─── Mount Node Routes ──────────────────────────────────────────────
 app.route('/nodes', nodeRoutes);
+app.route('/screenshots', screenshotRoutes);
 
 // ─── 404 Fallback ───────────────────────────────────────────────────
 app.notFound((c) => {
@@ -164,6 +166,7 @@ app.notFound((c) => {
 // Disable Next.js body size limit so large file uploads (videos up to 200MB) can pass through.
 // The actual per-file limits are enforced in src/utils/upload.ts.
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout for large uploads
 
 // ─── Export handlers for Next.js App Router ──────────────────────────
