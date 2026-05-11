@@ -13,35 +13,36 @@ datasource db {
 /// AssetNode represents a machine or part in the digital twin tree.
 /// Uses adjacency list pattern for recursive self-relation.
 model AssetNode {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
   name        String
-  status      String   @default("Machine")
-  company     String   @default("")
-  color       String   @default("#000000")
-  level       Int      @default(1)
-  isActive    Boolean  @default(true) @map("is_active")
-  icon        String   @default("tabler:settings")
-  description String   @default("")
+  status      String  @default("Machine")
+  company     String  @default("")
+  color       String  @default("#000000")
+  level       Int     @default(1)
+  isActive    Boolean @default(true) @map("is_active")
+  icon        String  @default("tabler:settings")
+  description String  @default("")
 
   // 3D Coordinates (stored as individual floats for query performance)
-  coordinateX     Float @default(0) @map("coordinate_x")
-  coordinateY     Float @default(0) @map("coordinate_y")
-  coordinateZ     Float @default(0) @map("coordinate_z")
+  coordinateX Float @default(0) @map("coordinate_x")
+  coordinateY Float @default(0) @map("coordinate_y")
+  coordinateZ Float @default(0) @map("coordinate_z")
 
   lineCoordinateX Float @default(0) @map("line_coordinate_x")
   lineCoordinateY Float @default(0) @map("line_coordinate_y")
   lineCoordinateZ Float @default(0) @map("line_coordinate_z")
 
-  rotateX         Float @default(0) @map("rotate_x")
-  rotateY         Float @default(0) @map("rotate_y")
-  rotateZ         Float @default(0) @map("rotate_z")
+  rotateX Float @default(0) @map("rotate_x")
+  rotateY Float @default(0) @map("rotate_y")
+  rotateZ Float @default(0) @map("rotate_z")
 
   size Float @default(1)
 
   // Self-relation for recursive tree (adjacency list)
-  parentId String?     @map("parent_id") @db.Uuid
-  parent   AssetNode?  @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children AssetNode[] @relation("NodeTree")
+  parentId    String?                 @map("parent_id") @db.Uuid
+  parent      AssetNode?              @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    AssetNode[]             @relation("NodeTree")
+  screenshots DigitalTwinScreenshot[]
 
   // Array fields stored as PostgreSQL text arrays
   tags              String[] @default([])
@@ -56,4 +57,33 @@ model AssetNode {
   @@index([isActive])
   @@index([status])
   @@map("asset_nodes")
+}
+
+/// Screenshot uploaded from Unity digital twin sessions.
+/// Stored as file metadata so maintenance views can list and display captures.
+model DigitalTwinScreenshot {
+  id          String     @id @default(uuid()) @db.Uuid
+  assetNodeId String?    @map("asset_node_id") @db.Uuid
+  assetNode   AssetNode? @relation(fields: [assetNodeId], references: [id], onDelete: SetNull)
+
+  title       String @default("")
+  description String @default("")
+
+  fileName     String @map("file_name")
+  originalName String @map("original_name")
+  mimeType     String @map("mime_type")
+  sizeBytes    Int    @map("size_bytes")
+  url          String
+  storagePath  String @map("storage_path")
+
+  capturedAt DateTime? @map("captured_at")
+  uploadedBy String?   @map("uploaded_by")
+  metadata   Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([assetNodeId])
+  @@index([createdAt])
+  @@map("digital_twin_screenshots")
 }

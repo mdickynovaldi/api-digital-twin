@@ -41,3 +41,20 @@ yarn-error.log*
 next-env.d.ts
 
 /generated/prisma
+/public/uploads/
+
+# AI & Editors
+/.codex
+/.cursor
+.cursorrules
+.cursorignore
+.windsurfrules
+.clinerules
+/.cline/
+/.roo/
+/.aider*
+/.continue/
+/.gemini
+/.vscode
+/.zed
+*.md

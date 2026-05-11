@@ -75,6 +75,9 @@ npm run setup
 | `GET` | `/api/nodes/:id/children` | List direct children |
 | `PATCH` | `/api/nodes/:id/move` | Move node to new parent |
 | `POST` | `/api/nodes/bulk-upsert-tree` | Bulk upsert tree structure |
+| `POST` | `/api/screenshots` | Upload Unity screenshot (`multipart/form-data`) |
+| `GET` | `/api/screenshots` | List uploaded screenshots |
+| `GET` | `/api/screenshots/:id` | Get screenshot detail |
 
 ---
 
@@ -210,6 +213,26 @@ curl -X POST http://localhost:3000/api/nodes/bulk-upsert-tree \
   }'
 ```
 
+### Upload Unity screenshot
+```bash
+curl -X POST http://localhost:3000/api/screenshots \
+  -F "file=@./capture.png" \
+  -F "asset_node_id={asset-node-uuid}" \
+  -F "title=Inspection capture" \
+  -F "captured_at=2026-05-11T09:30:00.000Z" \
+  -F 'metadata={"scene":"FactoryFloor","camera":"MainCamera"}'
+```
+
+### List screenshots for maintenance
+```bash
+curl "http://localhost:3000/api/screenshots?page=1&limit=20"
+```
+
+### List screenshots by asset node
+```bash
+curl "http://localhost:3000/api/screenshots?asset_node_id={asset-node-uuid}"
+```
+
 ---
 
 ## Unity Integration Notes
@@ -219,7 +242,8 @@ curl -X POST http://localhost:3000/api/nodes/bulk-upsert-tree \
 3. **Coordinates**: Already in `{x, y, z}` format matching Unity's `Vector3`
 4. **Recursive tree**: `GET /api/nodes/:id/tree` returns the full hierarchy — parse it recursively in Unity
 5. **Snake_case**: Response fields use `snake_case` (e.g. `is_active`, `parent_id`, `rotate_xyz`)
-6. **Content-Type**: Always send `Content-Type: application/json` for POST/PATCH requests
+6. **Content-Type**: Send `Content-Type: application/json` for node POST/PATCH requests
+7. **Screenshots**: Send screenshot uploads as `multipart/form-data` with image field `file` or `screenshot`
 
 ### C# UnityWebRequest Example
 ```csharp
