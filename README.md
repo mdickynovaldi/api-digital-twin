@@ -262,12 +262,11 @@ curl -X POST http://localhost:3000/api/auth/register \
   -d '{"username":"maintenance1","password":"secret123","display_name":"Maintenance 1","role":"maintenance"}'
 ```
 
-Use the returned `data.token` as `Authorization: Bearer <token>`.
+Bearer token is optional for demo mode. If `Authorization` is omitted, the API uses an internal `demo-admin` user so Unity can call endpoints directly.
 
 ### Report anomaly as operator
 ```bash
 curl -X POST http://localhost:3000/api/anomalies \
-  -H "Authorization: Bearer {operator-token}" \
   -F "asset_node_id={asset-node-uuid}" \
   -F "title=Abnormal vibration" \
   -F "description=Vibration marker appears above motor bearing" \
@@ -281,17 +280,14 @@ curl -X POST http://localhost:3000/api/anomalies \
 ### Maintenance workflow
 ```bash
 curl -X PATCH http://localhost:3000/api/anomalies/{anomaly-id}/acknowledge \
-  -H "Authorization: Bearer {maintenance-token}" \
   -H "Content-Type: application/json" \
   -d '{"acknowledged_by":"Maintenance 1","assigned_to":"Technician A","note":"Checked from maintenance queue"}'
 
 curl -X PATCH http://localhost:3000/api/anomalies/{anomaly-id}/status \
-  -H "Authorization: Bearer {maintenance-token}" \
   -H "Content-Type: application/json" \
   -d '{"status":"in_progress","updated_by":"Maintenance 1","note":"Technician dispatched"}'
 
 curl -X POST http://localhost:3000/api/anomalies/{anomaly-id}/resolve \
-  -H "Authorization: Bearer {maintenance-token}" \
   -F "resolution_note=Bearing replaced and vibration normalized" \
   -F "resolved_by=Maintenance 1" \
   -F "resolution_photo=@./after-repair.jpg"
@@ -299,14 +295,11 @@ curl -X POST http://localhost:3000/api/anomalies/{anomaly-id}/resolve \
 
 ### Unity anomaly flags
 ```bash
-curl http://localhost:3000/api/nodes/{asset-node-uuid}/anomalies/active \
-  -H "Authorization: Bearer {unity-token}"
+curl http://localhost:3000/api/nodes/{asset-node-uuid}/anomalies/active
 
-curl http://localhost:3000/api/nodes/{asset-node-uuid}/anomalies/latest \
-  -H "Authorization: Bearer {unity-token}"
+curl http://localhost:3000/api/nodes/{asset-node-uuid}/anomalies/latest
 
-curl "http://localhost:3000/api/unity/anomalies/sync?since=2026-05-12T00:00:00.000Z" \
-  -H "Authorization: Bearer {unity-token}"
+curl "http://localhost:3000/api/unity/anomalies/sync?since=2026-05-12T00:00:00.000Z"
 ```
 
 Unity state responses include `marker_state`: `none`, `active_anomaly`, or `resolved`.

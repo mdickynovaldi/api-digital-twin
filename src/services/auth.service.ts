@@ -13,6 +13,7 @@ const PASSWORD_HASH_ALGORITHM = 'pbkdf2_sha256';
 const PASSWORD_HASH_ITERATIONS = 210_000;
 const PASSWORD_HASH_KEY_LENGTH = 32;
 const DEFAULT_SESSION_TTL_HOURS = 168;
+const DEMO_AUTH_USERNAME = 'demo-admin';
 
 export type AuthenticatedUser = {
   id: string;
@@ -109,6 +110,26 @@ function getBearerToken(authorizationHeader?: string): string {
   return token;
 }
 
+async function getDemoUser(): Promise<AuthenticatedUser> {
+  const existing = await prisma.user.findUnique({
+    where: { username: DEMO_AUTH_USERNAME },
+  });
+  if (existing) {
+    return transformUser(existing);
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      username: DEMO_AUTH_USERNAME,
+      passwordHash: hashPassword(randomBytes(24).toString('base64url')),
+      displayName: 'Demo Admin',
+      role: UserRole.ADMIN,
+    },
+  });
+
+  return transformUser(user);
+}
+
 async function createSession(userId: string): Promise<{
   token: string;
   expires_at: string;
@@ -179,6 +200,10 @@ export const authService = {
   },
 
   async authenticate(authorizationHeader?: string): Promise<AuthenticatedUser> {
+    if (!authorizationHeader) {
+      return getDemoUser();
+    }
+
     const token = getBearerToken(authorizationHeader);
     const tokenHash = hashToken(token);
     const session = await prisma.authSession.findUnique({

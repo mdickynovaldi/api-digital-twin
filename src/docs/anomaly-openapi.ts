@@ -1,7 +1,8 @@
 export const anomalyOpenApiTags = [
   {
     name: 'Auth',
-    description: 'Bearer token authentication and role sessions',
+    description:
+      'Optional bearer token authentication. In demo mode, requests without Authorization use demo-admin.',
   },
   {
     name: 'Anomalies',
