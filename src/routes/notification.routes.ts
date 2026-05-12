@@ -1,7 +1,10 @@
 import { Hono } from 'hono';
 import { notificationService } from '@/src/services/notification.service';
-import { listNotificationsQuerySchema } from '@/src/schemas/notification.schema';
-import { getAuthUser, requireAuth } from '@/src/middleware/auth';
+import {
+  listNotificationsQuerySchema,
+  unreadCountQuerySchema,
+} from '@/src/schemas/notification.schema';
+import { getAuthUser, requireRole } from '@/src/middleware/auth';
 import { AppError } from '@/src/middleware';
 import { listResponse, successResponse } from '@/src/utils/response';
 
@@ -14,14 +17,25 @@ function getRequiredParam(value: string | undefined, name: string): string {
   return value;
 }
 
-notificationRoutes.get('/', requireAuth, async (c) => {
+function assertRoleQueryAllowed(
+  requestedRole: string,
+  actorRole: string
+) {
+  if (actorRole !== 'admin' && requestedRole !== actorRole) {
+    throw new AppError('Forbidden for this notification role', 403, 'FORBIDDEN');
+  }
+}
+
+notificationRoutes.get('/', requireRole('maintenance'), async (c) => {
   const parsed = listNotificationsQuerySchema.parse({
-    unread_only: c.req.query('unread_only'),
+    role: c.req.query('role'),
+    is_read: c.req.query('is_read'),
     page: c.req.query('page'),
     limit: c.req.query('limit'),
   });
-  const user = getAuthUser(c);
-  const result = await notificationService.listNotifications(user.id, parsed);
+  assertRoleQueryAllowed(parsed.role, getAuthUser(c).role);
+
+  const result = await notificationService.listNotifications(parsed);
 
   return c.json(
     listResponse(result.notifications, {
@@ -32,11 +46,20 @@ notificationRoutes.get('/', requireAuth, async (c) => {
   );
 });
 
-notificationRoutes.patch('/:id/read', requireAuth, async (c) => {
-  const user = getAuthUser(c);
+notificationRoutes.get('/unread-count', requireRole('maintenance'), async (c) => {
+  const parsed = unreadCountQuerySchema.parse({
+    role: c.req.query('role'),
+  });
+  assertRoleQueryAllowed(parsed.role, getAuthUser(c).role);
+
+  const result = await notificationService.unreadCount(parsed);
+  return c.json(successResponse(result));
+});
+
+notificationRoutes.patch('/:id/read', requireRole('maintenance'), async (c) => {
   const result = await notificationService.markRead(
     getRequiredParam(c.req.param('id'), 'id'),
-    user.id
+    { actorRole: getAuthUser(c).role }
   );
   return c.json(successResponse(result));
 });

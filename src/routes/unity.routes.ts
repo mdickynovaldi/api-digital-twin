@@ -1,27 +1,23 @@
 import { Hono } from 'hono';
 import { anomalyService } from '@/src/services/anomaly.service';
-import { listUnityMarkersQuerySchema } from '@/src/schemas/anomaly.schema';
-import { listResponse } from '@/src/utils/response';
+import { unitySyncQuerySchema } from '@/src/schemas/anomaly.schema';
+import { requireRole } from '@/src/middleware/auth';
+import { successResponse } from '@/src/utils/response';
 
 const unityRoutes = new Hono();
 
-unityRoutes.get('/anomaly-markers', async (c) => {
-  const parsed = listUnityMarkersQuerySchema.parse({
-    asset_node_id: c.req.query('asset_node_id'),
-    status: c.req.query('status'),
-    include_rejected: c.req.query('include_rejected'),
-    page: c.req.query('page'),
-    limit: c.req.query('limit'),
+unityRoutes.get('/anomalies/sync', requireRole('unity-client'), async (c) => {
+  const parsed = unitySyncQuerySchema.parse({
+    since: c.req.query('since'),
   });
-  const result = await anomalyService.listUnityMarkers(parsed);
+  const result = await anomalyService.syncForUnity(parsed);
 
-  return c.json(
-    listResponse(result.markers, {
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-    })
-  );
+  return c.json(successResponse(result));
+});
+
+unityRoutes.get('/anomaly-markers', requireRole('unity-client'), async (c) => {
+  const result = await anomalyService.syncForUnity({});
+  return c.json(successResponse(result));
 });
 
 export default unityRoutes;

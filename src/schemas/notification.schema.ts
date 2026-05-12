@@ -7,8 +7,17 @@ const optionalBooleanQuery = z.preprocess((value) => {
   return value;
 }, z.boolean().optional());
 
+export const notificationRoleSchema = z.enum([
+  'maintenance',
+  'operator',
+  'admin',
+]);
+
+export type NotificationRole = z.infer<typeof notificationRoleSchema>;
+
 export const listNotificationsQuerySchema = z.object({
-  unread_only: optionalBooleanQuery.default(false),
+  role: notificationRoleSchema.default('maintenance'),
+  is_read: optionalBooleanQuery,
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
@@ -16,3 +25,9 @@ export const listNotificationsQuerySchema = z.object({
 export type ListNotificationsQueryInput = z.infer<
   typeof listNotificationsQuerySchema
 >;
+
+export const unreadCountQuerySchema = z.object({
+  role: notificationRoleSchema.default('maintenance'),
+});
+
+export type UnreadCountQueryInput = z.infer<typeof unreadCountQuerySchema>;

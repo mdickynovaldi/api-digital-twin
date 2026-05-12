@@ -8,7 +8,34 @@ export const apiAnomalyStatusSchema = z.enum([
   'rejected',
 ]);
 
+export const anomalyListStatusSchema = z.enum([
+  'open',
+  'acknowledged',
+  'in_progress',
+  'resolved',
+]);
+
+export const anomalyTypeSchema = z.enum([
+  'temperature',
+  'vibration',
+  'leak',
+  'noise',
+  'visual',
+  'electrical',
+  'mechanical',
+  'other',
+]);
+
+export const anomalySeveritySchema = z.enum([
+  'low',
+  'medium',
+  'high',
+  'critical',
+]);
+
 export type ApiAnomalyStatus = z.infer<typeof apiAnomalyStatusSchema>;
+export type ApiAnomalyType = z.infer<typeof anomalyTypeSchema>;
+export type ApiAnomalySeverity = z.infer<typeof anomalySeveritySchema>;
 
 const optionalString = (max?: number) => {
   const schema = max ? z.string().trim().max(max) : z.string().trim();
@@ -19,6 +46,14 @@ const optionalString = (max?: number) => {
   }, schema.optional());
 };
 
+const requiredString = (field: string, max?: number) => {
+  const schema = max ? z.string().trim().min(1).max(max) : z.string().trim().min(1);
+  return z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    return value.trim();
+  }, schema.describe(`${field} is required`));
+};
+
 const optionalBooleanQuery = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
   if (value === 'true' || value === true) return true;
@@ -26,59 +61,75 @@ const optionalBooleanQuery = z.preprocess((value) => {
   return value;
 }, z.boolean().optional());
 
-export const createAnomalySchema = z.object({
-  asset_node_id: z.string().uuid(),
-  screenshot_id: optionalString().pipe(z.string().uuid().optional()),
-  title: z.string().trim().min(1).max(255),
-  description: z.string().trim().max(5000).optional().default(''),
-  severity: z.string().trim().max(100).optional().default('medium'),
+export const createAnomalyFieldsSchema = z.object({
+  asset_node_id: requiredString('asset_node_id').pipe(z.string().uuid()),
+  title: requiredString('title', 255),
+  description: requiredString('description', 5000),
+  anomaly_type: anomalyTypeSchema,
+  severity: anomalySeveritySchema,
+  captured_at: optionalString().pipe(z.string().datetime({ offset: true }).optional()),
+  reported_by: optionalString(255),
   metadata: z.record(z.unknown()).optional(),
 });
 
-export type CreateAnomalyInput = z.infer<typeof createAnomalySchema>;
+export type CreateAnomalyFieldsInput = z.infer<
+  typeof createAnomalyFieldsSchema
+>;
 
 export const listAnomaliesQuerySchema = z.object({
-  status: apiAnomalyStatusSchema.optional(),
+  status: anomalyListStatusSchema.optional(),
+  severity: anomalySeveritySchema.optional(),
   asset_node_id: optionalString().pipe(z.string().uuid().optional()),
-  screenshot_id: optionalString().pipe(z.string().uuid().optional()),
-  assigned_to_me: optionalBooleanQuery,
-  reported_by_me: optionalBooleanQuery,
-  include_rejected: optionalBooleanQuery.default(true),
+  assigned_to: optionalString(255),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  sort: z.enum(['newest', 'oldest']).default('newest'),
 });
 
-export type ListAnomaliesQueryInput = z.infer<typeof listAnomaliesQuerySchema>;
-
-export const transitionNoteSchema = z.object({
-  note: z.string().trim().max(5000).optional().default(''),
-});
-
-export type TransitionNoteInput = z.infer<typeof transitionNoteSchema>;
-
-export const rejectAnomalySchema = z.object({
-  reason: z.string().trim().min(1).max(5000),
-});
-
-export type RejectAnomalyInput = z.infer<typeof rejectAnomalySchema>;
-
-export const solveAnomalySchema = z.object({
-  field_notes: z.string().trim().max(5000).optional().default(''),
-  actions_taken: z.array(z.string().trim().min(1).max(500)).optional().default([]),
-  metadata: z.record(z.unknown()).optional(),
-  solved_at: optionalString().pipe(z.string().datetime({ offset: true }).optional()),
-});
-
-export type SolveAnomalyInput = z.infer<typeof solveAnomalySchema>;
-
-export const listUnityMarkersQuerySchema = z.object({
-  asset_node_id: optionalString().pipe(z.string().uuid().optional()),
-  status: apiAnomalyStatusSchema.optional(),
-  include_rejected: optionalBooleanQuery.default(false),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
-});
-
-export type ListUnityMarkersQueryInput = z.infer<
-  typeof listUnityMarkersQuerySchema
+export type ListAnomaliesQueryInput = z.infer<
+  typeof listAnomaliesQuerySchema
 >;
+
+export const acknowledgeAnomalySchema = z.object({
+  acknowledged_by: requiredString('acknowledged_by', 255),
+  assigned_to: optionalString(255),
+  note: optionalString(5000),
+});
+
+export type AcknowledgeAnomalyInput = z.infer<
+  typeof acknowledgeAnomalySchema
+>;
+
+export const updateAnomalyStatusSchema = z.object({
+  status: apiAnomalyStatusSchema,
+  note: optionalString(5000),
+  updated_by: requiredString('updated_by', 255),
+});
+
+export type UpdateAnomalyStatusInput = z.infer<
+  typeof updateAnomalyStatusSchema
+>;
+
+export const resolveAnomalyFieldsSchema = z.object({
+  resolution_note: requiredString('resolution_note', 5000),
+  resolved_by: requiredString('resolved_by', 255),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type ResolveAnomalyFieldsInput = z.infer<
+  typeof resolveAnomalyFieldsSchema
+>;
+
+export const unitySyncQuerySchema = z.object({
+  since: optionalString().pipe(z.string().datetime({ offset: true }).optional()),
+});
+
+export type UnitySyncQueryInput = z.infer<typeof unitySyncQuerySchema>;
+
+export const notificationQueryRoleSchema = z.enum([
+  'maintenance',
+  'operator',
+  'admin',
+]);
+
+export const optionalReadQuerySchema = optionalBooleanQuery;

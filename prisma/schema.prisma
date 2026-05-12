@@ -11,8 +11,10 @@ datasource db {
 }
 
 enum UserRole {
-  OPERATOR    @map("operator")
-  MAINTENANCE @map("maintenance")
+  OPERATOR     @map("operator")
+  MAINTENANCE  @map("maintenance")
+  ADMIN        @map("admin")
+  UNITY_CLIENT @map("unity-client")
 
   @@map("user_role")
 }
@@ -56,11 +58,12 @@ model AssetNode {
   size Float @default(1)
 
   // Self-relation for recursive tree (adjacency list)
-  parentId    String?                 @map("parent_id") @db.Uuid
-  parent      AssetNode?              @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children    AssetNode[]             @relation("NodeTree")
-  screenshots DigitalTwinScreenshot[]
-  anomalies   AnomalyTicket[]
+  parentId      String?                 @map("parent_id") @db.Uuid
+  parent        AssetNode?              @relation("NodeTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children      AssetNode[]             @relation("NodeTree")
+  screenshots   DigitalTwinScreenshot[]
+  anomalies     AnomalyTicket[]
+  notifications Notification[]
 
   // Array fields stored as PostgreSQL text arrays
   tags              String[] @default([])
@@ -160,22 +163,32 @@ model AnomalyTicket {
   screenshotId String?                @map("screenshot_id") @db.Uuid
   screenshot   DigitalTwinScreenshot? @relation(fields: [screenshotId], references: [id], onDelete: SetNull)
 
-  title       String
-  description String        @default("")
-  severity    String        @default("medium")
-  status      AnomalyStatus @default(OPEN)
-  metadata    Json?
+  title          String
+  description    String        @default("")
+  anomalyType    String        @default("other") @map("anomaly_type")
+  severity       String        @default("medium")
+  status         AnomalyStatus @default(OPEN)
+  metadata       Json?
+  screenshotUrl  String        @default("") @map("screenshot_url")
+  capturedAt     DateTime?     @map("captured_at")
+  reportedByName String?       @map("reported_by")
 
   reportedById String? @map("reported_by_id") @db.Uuid
   reportedBy   User?   @relation("ReportedAnomalies", fields: [reportedById], references: [id], onDelete: SetNull)
 
-  assignedMaintenanceId String? @map("assigned_maintenance_id") @db.Uuid
-  assignedMaintenance   User?   @relation("AssignedMaintenance", fields: [assignedMaintenanceId], references: [id], onDelete: SetNull)
+  assignedMaintenanceId String?   @map("assigned_maintenance_id") @db.Uuid
+  assignedMaintenance   User?     @relation("AssignedMaintenance", fields: [assignedMaintenanceId], references: [id], onDelete: SetNull)
+  acknowledgedBy        String?   @map("acknowledged_by")
+  acknowledgedAt        DateTime? @map("acknowledged_at")
+  assignedTo            String?   @map("assigned_to")
 
-  solvedById String?   @map("solved_by_id") @db.Uuid
-  solvedBy   User?     @relation("SolvedAnomalies", fields: [solvedById], references: [id], onDelete: SetNull)
-  solvedAt   DateTime? @map("solved_at")
-  rejectedAt DateTime? @map("rejected_at")
+  solvedById         String?   @map("solved_by_id") @db.Uuid
+  solvedBy           User?     @relation("SolvedAnomalies", fields: [solvedById], references: [id], onDelete: SetNull)
+  solvedAt           DateTime? @map("solved_at")
+  rejectedAt         DateTime? @map("rejected_at")
+  resolutionNote     String?   @map("resolution_note")
+  resolutionPhotoUrl String?   @map("resolution_photo_url")
+  resolvedByName     String?   @map("resolved_by")
 
   unityMarkerVisible        Boolean @default(true) @map("unity_marker_visible")
   unityResolvedCheckVisible Boolean @default(false) @map("unity_resolved_check_visible")
@@ -194,6 +207,8 @@ model AnomalyTicket {
   @@index([reportedById])
   @@index([assignedMaintenanceId])
   @@index([solvedById])
+  @@index([assignedTo])
+  @@index([updatedAt])
   @@index([createdAt])
   @@map("anomaly_tickets")
 }
@@ -246,10 +261,13 @@ model MaintenancePhoto {
 
 model Notification {
   id          String         @id @default(uuid()) @db.Uuid
-  recipientId String         @map("recipient_id") @db.Uuid
-  recipient   User           @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId String?        @map("recipient_id") @db.Uuid
+  recipient   User?          @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  userRole    UserRole       @default(MAINTENANCE) @map("user_role")
   anomalyId   String?        @map("anomaly_id") @db.Uuid
   anomaly     AnomalyTicket? @relation(fields: [anomalyId], references: [id], onDelete: Cascade)
+  assetNodeId String?        @map("asset_node_id") @db.Uuid
+  assetNode   AssetNode?     @relation(fields: [assetNodeId], references: [id], onDelete: SetNull)
 
   type    String
   title   String
@@ -260,7 +278,9 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([recipientId])
+  @@index([userRole])
   @@index([anomalyId])
+  @@index([assetNodeId])
   @@index([isRead])
   @@index([createdAt])
   @@map("notifications")

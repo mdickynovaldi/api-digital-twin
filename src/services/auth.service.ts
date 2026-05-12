@@ -24,11 +24,15 @@ export type AuthenticatedUser = {
 const roleByApi: Record<ApiRole, UserRole> = {
   operator: UserRole.OPERATOR,
   maintenance: UserRole.MAINTENANCE,
+  admin: UserRole.ADMIN,
+  'unity-client': UserRole.UNITY_CLIENT,
 };
 
 const apiRoleByPrisma: Record<UserRole, ApiRole> = {
   [UserRole.OPERATOR]: 'operator',
   [UserRole.MAINTENANCE]: 'maintenance',
+  [UserRole.ADMIN]: 'admin',
+  [UserRole.UNITY_CLIENT]: 'unity-client',
 };
 
 function getSessionTtlHours(): number {

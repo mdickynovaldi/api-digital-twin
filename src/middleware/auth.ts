@@ -49,7 +49,7 @@ export function requireRole(...roles: ApiRole[]): MiddlewareHandler {
       return authErrorResponse(c, err);
     }
 
-    if (!roles.includes(user.role)) {
+    if (user.role !== 'admin' && !roles.includes(user.role)) {
       return c.json(
         errorResponse('Forbidden for this role', 'FORBIDDEN'),
         403

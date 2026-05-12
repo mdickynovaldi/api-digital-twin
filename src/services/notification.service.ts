@@ -1,59 +1,60 @@
-import type { Prisma } from '@prisma/client';
+import { UserRole, type Prisma } from '@prisma/client';
 import { prisma } from '@/src/lib/prisma';
 import { AppError } from '@/src/middleware';
-import type { ListNotificationsQueryInput } from '@/src/schemas/notification.schema';
+import type {
+  ListNotificationsQueryInput,
+  NotificationRole,
+  UnreadCountQueryInput,
+} from '@/src/schemas/notification.schema';
+
+const roleByApi: Record<NotificationRole, UserRole> = {
+  maintenance: UserRole.MAINTENANCE,
+  operator: UserRole.OPERATOR,
+  admin: UserRole.ADMIN,
+};
+
+const apiRoleByPrisma: Partial<Record<UserRole, NotificationRole>> = {
+  [UserRole.MAINTENANCE]: 'maintenance',
+  [UserRole.OPERATOR]: 'operator',
+  [UserRole.ADMIN]: 'admin',
+};
 
 const notificationSelect = {
   id: true,
+  userRole: true,
   anomalyId: true,
+  assetNodeId: true,
   type: true,
   title: true,
   message: true,
   isRead: true,
-  readAt: true,
   createdAt: true,
-  anomaly: {
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      assetNodeId: true,
-    },
-  },
+  readAt: true,
 } satisfies Prisma.NotificationSelect;
 
 type NotificationPayload = Prisma.NotificationGetPayload<{
   select: typeof notificationSelect;
 }>;
 
-function statusToApi(status: string): string {
-  return status.toLowerCase();
-}
-
-function transformNotification(notification: NotificationPayload): Record<string, unknown> {
+function transformNotification(
+  notification: NotificationPayload
+): Record<string, unknown> {
   return {
     id: notification.id,
+    user_role: apiRoleByPrisma[notification.userRole] ?? 'maintenance',
     anomaly_id: notification.anomalyId,
+    asset_node_id: notification.assetNodeId,
     type: notification.type,
     title: notification.title,
     message: notification.message,
     is_read: notification.isRead,
-    read_at: notification.readAt?.toISOString() ?? null,
     created_at: notification.createdAt.toISOString(),
-    anomaly: notification.anomaly
-      ? {
-          id: notification.anomaly.id,
-          title: notification.anomaly.title,
-          status: statusToApi(notification.anomaly.status),
-          asset_node_id: notification.anomaly.assetNodeId,
-        }
-      : null,
+    read_at: notification.readAt?.toISOString() ?? null,
   };
 }
 
 export const notificationService = {
   async listNotifications(
-    userId: string,
     options: ListNotificationsQueryInput
   ): Promise<{
     notifications: Record<string, unknown>[];
@@ -62,10 +63,10 @@ export const notificationService = {
     limit: number;
   }> {
     const where: Prisma.NotificationWhereInput = {
-      recipientId: userId,
+      userRole: roleByApi[options.role],
     };
-    if (options.unread_only) {
-      where.isRead = false;
+    if (options.is_read !== undefined) {
+      where.isRead = options.is_read;
     }
 
     const skip = (options.page - 1) * options.limit;
@@ -90,13 +91,15 @@ export const notificationService = {
 
   async markRead(
     id: string,
-    userId: string
+    options: { actorRole: string }
   ): Promise<Record<string, unknown>> {
+    const where: Prisma.NotificationWhereInput = { id };
+    if (options.actorRole !== 'admin') {
+      where.userRole = UserRole.MAINTENANCE;
+    }
+
     const existing = await prisma.notification.findFirst({
-      where: {
-        id,
-        recipientId: userId,
-      },
+      where,
       select: { id: true },
     });
     if (!existing) {
@@ -113,5 +116,18 @@ export const notificationService = {
     });
 
     return transformNotification(updated);
+  },
+
+  async unreadCount(
+    options: UnreadCountQueryInput
+  ): Promise<{ count: number }> {
+    const count = await prisma.notification.count({
+      where: {
+        userRole: roleByApi[options.role],
+        isRead: false,
+      },
+    });
+
+    return { count };
   },
 };

@@ -4,6 +4,7 @@ import {
   listScreenshotsQuerySchema,
   uploadScreenshotFieldsSchema,
 } from '@/src/schemas/screenshot.schema';
+import { requireRole } from '@/src/middleware/auth';
 import { successResponse, listResponse } from '@/src/utils/response';
 import { AppError } from '@/src/middleware';
 
@@ -107,7 +108,10 @@ screenshotRoutes.get('/', async (c) => {
 });
 
 // ─── GET /screenshots/:id/file — Render screenshot image ───────────
-screenshotRoutes.get('/:id/file', async (c) => {
+screenshotRoutes.get(
+  '/:id/file',
+  requireRole('operator', 'maintenance', 'unity-client'),
+  async (c) => {
   const id = c.req.param('id');
   const file = await screenshotService.getScreenshotFile(id);
   const body = file.fileData.buffer.slice(
@@ -124,7 +128,8 @@ screenshotRoutes.get('/:id/file', async (c) => {
       'Content-Disposition': `inline; filename="${file.originalName.replaceAll('"', '')}"`,
     },
   });
-});
+  }
+);
 
 // ─── GET /screenshots/:id — Get screenshot detail ──────────────────
 screenshotRoutes.get('/:id', async (c) => {

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { nodeService } from '@/src/services/node.service';
+import { anomalyService } from '@/src/services/anomaly.service';
 import {
   createNodeSchema,
   updateNodeSchema,
@@ -16,6 +17,7 @@ import type {
 } from '@/src/schemas/node.schema';
 import { successResponse, listResponse, errorResponse } from '@/src/utils/response';
 import uploadRoutes from '@/src/routes/upload.routes';
+import { requireRole } from '@/src/middleware/auth';
 
 /**
  * Node routes — all REST endpoints for AssetNode CRUD and tree operations.
@@ -70,6 +72,28 @@ nodeRoutes.get('/', async (c) => {
     })
   );
 });
+
+// ─── GET /nodes/:id/anomalies/active — Unity active anomalies ──────
+nodeRoutes.get(
+  '/:id/anomalies/active',
+  requireRole('unity-client'),
+  async (c) => {
+    const id = c.req.param('id');
+    const result = await anomalyService.listActiveByAsset(id);
+    return c.json(successResponse(result));
+  }
+);
+
+// ─── GET /nodes/:id/anomalies/latest — Unity latest anomaly state ──
+nodeRoutes.get(
+  '/:id/anomalies/latest',
+  requireRole('unity-client'),
+  async (c) => {
+    const id = c.req.param('id');
+    const result = await anomalyService.getLatestByAsset(id);
+    return c.json(successResponse(result));
+  }
+);
 
 // ─── GET /nodes/:id — Get single node detail ───────────────────────
 nodeRoutes.get('/:id', async (c) => {

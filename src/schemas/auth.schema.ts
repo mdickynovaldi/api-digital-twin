@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-export const apiRoleSchema = z.enum(['operator', 'maintenance']);
+export const apiRoleSchema = z.enum([
+  'operator',
+  'maintenance',
+  'admin',
+  'unity-client',
+]);
 
 export type ApiRole = z.infer<typeof apiRoleSchema>;
 

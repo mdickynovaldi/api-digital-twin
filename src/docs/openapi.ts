@@ -1,3 +1,10 @@
+import {
+  anomalyOpenApiPaths,
+  anomalyOpenApiSchemas,
+  anomalyOpenApiSecuritySchemes,
+  anomalyOpenApiTags,
+} from '@/src/docs/anomaly-openapi';
+
 /**
  * OpenAPI 3.1 Specification for Digital Twin API
  *
@@ -94,8 +101,11 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
       description:
         'Unity screenshot uploads for maintenance views | Unggah screenshot Unity untuk tampilan maintenance',
     },
+    ...anomalyOpenApiTags,
   ],
   paths: {
+    ...anomalyOpenApiPaths,
+
     // ─── Health Check ─────────────────────────────────────────────────
     '/health': {
       get: {
@@ -1203,7 +1213,12 @@ Mendukung operasi CRUD penuh dengan struktur pohon rekursif, anak bersarang (nes
 
   // ─── Components ───────────────────────────────────────────────────
   components: {
+    securitySchemes: {
+      ...anomalyOpenApiSecuritySchemes,
+    },
     schemas: {
+      ...anomalyOpenApiSchemas,
+
       Coordinate: {
         type: 'object',
         description: '3D coordinate with x, y, z values',
